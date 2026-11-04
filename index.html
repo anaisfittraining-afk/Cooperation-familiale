@@ -779,6 +779,34 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   @media (min-width: 700px) {
     main { max-width: 700px; }
   }
+
+  /* ── 🌈 Ma journée ── */
+  .jr-strip { display: flex; gap: 6px; overflow-x: auto; padding: 2px 0 10px; }
+  .jr-day { flex: 0 0 auto; min-width: 54px; padding: 7px 6px; border-radius: 14px; border: 1.5px solid #E2DCC8; background: #fff; text-align: center; cursor: pointer; font-family: inherit; color: #26312A; }
+  .jr-day .d1 { font-size: 10.5px; text-transform: uppercase; letter-spacing: .4px; color: #66735F; }
+  .jr-day .d2 { font-size: 16px; font-weight: 700; line-height: 1.15; }
+  .jr-day .d3 { font-size: 13px; min-height: 17px; }
+  .jr-day.sel { border-color: #3F5D46; background: #E7EEE1; }
+  .jr-card { background: #fff; border: 1px solid #E2DCC8; border-radius: 18px; padding: 14px 14px 16px; margin-bottom: 12px; }
+  .jr-task { display: flex; align-items: center; gap: 12px; width: 100%; padding: 13px 12px; margin-bottom: 8px; border: 1.5px solid #E2DCC8; border-radius: 14px; background: #fff; text-align: left; font-family: inherit; font-size: 15px; color: #26312A; cursor: pointer; }
+  .jr-task .box { flex: 0 0 28px; height: 28px; border-radius: 9px; border: 2px solid #C9C2AC; display: flex; align-items: center; justify-content: center; font-size: 17px; color: #fff; background: #fff; }
+  .jr-task.done { background: #E7EEE1; border-color: #9DB894; }
+  .jr-task.done .box { background: #3F5D46; border-color: #3F5D46; }
+  .jr-task.done .lbl { text-decoration: line-through; color: #66735F; }
+  .jr-task.locked { cursor: default; opacity: .85; }
+  .jr-bar { height: 10px; border-radius: 10px; background: #EFE9D8; overflow: hidden; margin: 6px 0 14px; }
+  .jr-bar > div { height: 100%; background: linear-gradient(90deg, #6F8F6C, #3F5D46); border-radius: 10px; transition: width .25s; }
+  .jr-unlock { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 12px; }
+  .jr-chip { flex: 1 1 140px; padding: 11px 12px; border-radius: 14px; font-size: 13.5px; font-weight: 700; text-align: center; }
+  .jr-chip.on { background: #E7EEE1; color: #2C4432; border: 1.5px solid #9DB894; }
+  .jr-chip.off { background: #F4F0E4; color: #8a8577; border: 1.5px dashed #D2CAB2; }
+  .jr-btn { display: block; width: 100%; margin-top: 12px; padding: 14px; border: none; border-radius: 13px; font-family: inherit; font-size: 15px; font-weight: 700; cursor: pointer; background: #3F5D46; color: #fff; }
+  .jr-btn.ghost { background: #fff; color: #66735F; border: 1.5px solid #E2DCC8; font-weight: 600; font-size: 13.5px; padding: 10px; }
+  .jr-banner { background: #FFF6E5; border: 1px solid #F0D9A8; color: #7A5A12; border-radius: 12px; padding: 11px 13px; font-size: 13.5px; margin-bottom: 10px; }
+  .jr-set-row { display: flex; gap: 8px; align-items: center; margin-bottom: 8px; }
+  .jr-set-row input[type=text] { flex: 1; min-width: 0; padding: 10px 12px; border: 1.5px solid #E2DCC8; border-radius: 10px; font-size: 15px; font-family: inherit; }
+  .jr-set-row input[type=number] { width: 110px; padding: 10px 12px; border: 1.5px solid #E2DCC8; border-radius: 10px; font-size: 15px; font-family: inherit; }
+  .jr-x { flex: 0 0 auto; border: none; background: #fff5f5; color: #c53030; border-radius: 10px; padding: 9px 11px; cursor: pointer; font-size: 14px; }
 </style>
 </head>
 <body>
@@ -827,6 +855,10 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     </div>
     <div id="homeSearchResults" style="display:none;"></div>
     <div class="home-tiles" id="homeTiles">
+      <div class="home-tile" onclick="showView('journee', null)">
+        <div class="home-tile-ico" style="background:#FBE9DF;color:#B96A46;font-size:26px;">🌈</div>
+        <div><div class="home-tile-label">Ma journée</div><div class="home-tile-sub">Les tâches du jour des enfants</div></div>
+      </div>
       <div class="home-tile" onclick="showView('today', document.querySelector('nav.bottom button[data-view=today]'))">
         <div class="home-tile-ico" style="background:#E7EEE1;color:#3F5D46;"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg></div>
         <div><div class="home-tile-label">Aujourd'hui</div><div class="home-tile-sub">Le point du jour</div></div>
@@ -1323,6 +1355,8 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
 
   <div class="view" id="view-taches"></div>
   <div class="view" id="view-famille"></div>
+
+  <div class="view" id="view-journee"></div>
 
 </main>
 
@@ -1966,6 +2000,9 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   // Chaque modification republie l'état complet dans une base de données partagée en ligne ; les autres
   // téléphones ouverts sur la même page reçoivent la mise à jour en direct, sans avoir besoin de recharger.
   var SYNC_KEYS = [TASKS_KEY, CHECKS_KEY, SHARED_CREDIT_KEY, COURSES_KEY, LASTDONE_KEY, MALUS_KEY, MALUS_CATALOG_KEY, BONUS_CATALOG_KEY, POCKET_KEY, POCKET_ADJUST_KEY, DEBTS_KEY, ARGENT_MONTH_KEY, WALLET_KEY, DISTRIB_HISTORY_KEY, RECEIVED_KEY, POCKET_MONTH_HISTORY_KEY, WEEKLY_BONUS_STATE_KEY, WEEKLY_BONUS_HISTORY_KEY, MONTHLY_BONUS_USED_KEY, FAMILY_CONFIG_KEY, CHILD_PRESENCE_KEY, SAVINGS_GOAL_KEY, FAMILY_LIFE_KEY, FORCE_VALID_KEY, FORCE_CLOSE_MONTH_KEY];
+  // 🌈 Ma journée (fiche du jour des enfants) : données propres, isolées par famille (nsKey) et synchronisées.
+  var DAYSHEET_KEY = nsKey('mh_daysheet_v1'); // { config:{monthly:{personId:€},absentAuto}, templates:{_famille:[…],personId:[…]}, days:{personId:{'YYYY-MM-DD':{ticks:{taskId:true},validated,validatedAt}}} }
+  SYNC_KEYS.push(DAYSHEET_KEY);
   var firebaseConfig = {
     apiKey: "AIzaSyC9BmsyRf2MY7qxRO7bL1wRhkJuig0IcLQ",
     authDomain: "cooperation-familiale.firebaseapp.com",
@@ -2056,6 +2093,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     renderToday();
     renderPoints();
     maybeShowFamilySetup();
+    try { var jv = document.getElementById('view-journee'); if (jv && jv.classList.contains('active') && !JR_EDIT_FOCUS()) renderJourneeView(); } catch (e) {}
   }
   function initSync() {
     if (typeof firebase === 'undefined') {
@@ -6704,9 +6742,10 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   // Mes accès). NAV_PARENT dit, pour un sous-écran donné, quel onglet du bas doit rester actif.
   var NAV_PARENT = {
     daily: 'taches', weekly: 'taches', monthly: 'taches', exceptional: 'taches', argent: 'taches',
-    bonus: 'famille', malus: 'famille', points: 'famille', acces: 'famille', rappel: 'famille', fiches: 'famille', tuto: 'famille'
+    bonus: 'famille', malus: 'famille', points: 'famille', acces: 'famille', rappel: 'famille', fiches: 'famille', tuto: 'famille', journee: 'famille'
   };
   var HUB_ICONS_MH = {
+    journee: { bg: '#FBE9DF', fg: '#B96A46', svg: '<span style="font-size:20px;line-height:1">🌈</span>' },
     daily: { bg: '#F7E4D8', fg: '#8A4A21', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg>' },
     weekly: { bg: '#E3ECF2', fg: '#3D5A73', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/><path d="M7.5 13.5h3M7.5 16.5h3M13.5 13.5h3"/></svg>' },
     monthly: { bg: '#EFE8D8', fg: '#8A7434', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/><path d="M7 13h1M11 13h1M15 13h1M7 16.5h1M11 16.5h1M15 16.5h1"/></svg>' },
@@ -6744,6 +6783,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     if (!el) return;
     el.innerHTML =
       '<div class="section-head"><h2>👪 Vie de famille</h2></div>' +
+      hubItemHtmlMH('journee', 'Ma journée', journeeHubSub()) +
       hubItemHtmlMH('rappel', 'À ne pas oublier', 'Envoyer un message à ' + organizerLabel()) +
       hubItemHtmlMH('fiches', 'Fiches enfants', 'Des tâches perso, juste pour lui/elle') +
       hubItemHtmlMH('bonus', 'Bonus & vie de famille', 'Récompenser un bon comportement') +
@@ -7008,6 +7048,228 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     out += renderFicheAddTaskForm(person);
     el.innerHTML = out;
   }
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // 🌈 MA JOURNÉE — la fiche du jour de chaque enfant. Module AUTONOME (aucune modification du
+  // système de points, tâches, malus ni cagnottes existant) :
+  //  • chaque enfant a sa liste de tâches du jour (modèle de la famille, ou liste à lui) ;
+  //  • l'enfant coche ; un PARENT valide la journée avec le code secret (demandé à chaque validation) ;
+  //  • une journée validée débloque les loisirs du jour ET une journée d'argent de poche
+  //    = argent de poche du mois ÷ nombre de jours du mois ;
+  //  • une semaine marquée « absent » (garde alternée, voir 🏆 Implication) est validée automatiquement.
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  var JR_DEFAULT_TASKS = [
+    { id: 'd1', label: '🛏️ Faire mon lit' }, { id: 'd2', label: '🪥 Me brosser les dents' },
+    { id: 'd3', label: '👕 Ranger mes affaires' }, { id: 'd4', label: '📚 Devoirs / lecture' },
+    { id: 'd5', label: '🍽️ Aider à table' }, { id: 'd6', label: '🎒 Préparer mon sac' }
+  ];
+  var JR_MONTHS = ['janvier', 'février', 'mars', 'avril', 'mai', 'juin', 'juillet', 'août', 'septembre', 'octobre', 'novembre', 'décembre'];
+  var JR_DAYS = ['dim', 'lun', 'mar', 'mer', 'jeu', 'ven', 'sam'];
+  var JR_PID = null, JR_DATE = null, JR_SETTINGS = false;
+  function JR_EDIT_FOCUS() { var a = document.activeElement; return !!(a && a.closest && a.closest('#view-journee') && /^(INPUT|TEXTAREA)$/.test(a.tagName)); }
+  function jrGet() {
+    var o = {};
+    try { o = JSON.parse(localStorage.getItem(DAYSHEET_KEY) || '{}') || {}; } catch (e) { o = {}; }
+    if (!o.config) o.config = {};
+    if (!o.config.monthly) o.config.monthly = {};
+    if (!o.templates) o.templates = {};
+    if (!o.days) o.days = {};
+    return o;
+  }
+  function jrSave(o) { localStorage.setItem(DAYSHEET_KEY, JSON.stringify(o)); scheduleSyncPublish(); }
+  function jrTasks(o, pid) {
+    var t = o.templates[pid] || o.templates._famille || JR_DEFAULT_TASKS;
+    return t.map(function(x) { return { id: x.id, label: x.label }; });
+  }
+  function jrHasOwnList(o, pid) { return !!o.templates[pid]; }
+  function jrDayRec(o, pid, date) { return (o.days[pid] && o.days[pid][date]) || { ticks: {} }; }
+  function jrIsAbsent(o, pid, date) { return o.config.absentAuto !== false && isChildAbsentWeek(pid, isoWeekKeyForDate(date)); }
+  function jrDone(o, pid, date) {
+    var tasks = jrTasks(o, pid), rec = jrDayRec(o, pid, date), n = 0;
+    tasks.forEach(function(t) { if (rec.ticks && rec.ticks[t.id]) n++; });
+    return { n: n, total: tasks.length };
+  }
+  // 'valide' | 'absent' | 'termine' (tout coché, en attente d'un parent) | 'encours'
+  function jrStatus(o, pid, date) {
+    var rec = jrDayRec(o, pid, date);
+    if (rec.validated) return 'valide';
+    if (jrIsAbsent(o, pid, date)) return 'absent';
+    var d = jrDone(o, pid, date);
+    if (d.total > 0 && d.n >= d.total) return 'termine';
+    return 'encours';
+  }
+  function jrAddDays(dateStr, delta) {
+    var p = dateStr.split('-').map(Number), d = new Date(p[0], p[1] - 1, p[2] + delta);
+    return d.getFullYear() + '-' + pad2(d.getMonth() + 1) + '-' + pad2(d.getDate());
+  }
+  function jrMonthStats(o, pid, ym) {
+    var p = ym.split('-').map(Number), dim = daysInMonth(p[0], p[1] - 1), today = todayISO(), val = 0, abs = 0;
+    for (var d = 1; d <= dim; d++) {
+      var ds = ym + '-' + pad2(d);
+      if (ds > today) break;
+      var rec = jrDayRec(o, pid, ds);
+      if (rec.validated) val++;
+      else if (jrIsAbsent(o, pid, ds)) abs++;
+    }
+    var monthly = parseFloat(o.config.monthly[pid]) || 0, daily = monthly / dim;
+    return { dim: dim, val: val, abs: abs, monthly: monthly, daily: daily, total: round2(daily * (val + abs)) };
+  }
+  // Demande le code parent À CHAQUE FOIS (sans conserver le déverrouillage des Paramètres) : un enfant
+  // qui a la main sur l'appli après un déverrouillage ne peut pas valider sa propre journée.
+  function jrAskParent(cb) {
+    var was = ADMIN_UNLOCKED;
+    ADMIN_UNLOCKED = false;
+    requireAdminCode(function() { ADMIN_UNLOCKED = was; cb(); });
+    ADMIN_UNLOCKED = was;
+  }
+  function journeeHubSub() {
+    try {
+      var o = jrGet(), t = todayISO(), n = 0;
+      ficheChildren().forEach(function(p) { if (jrStatus(o, p.id, t) === 'termine') n++; });
+      return n ? ('⏳ ' + n + ' journée' + (n > 1 ? 's' : '') + ' à valider') : 'La fiche du jour de chaque enfant';
+    } catch (e) { return 'La fiche du jour de chaque enfant'; }
+  }
+  function jrSetKid(pid) { JR_PID = pid; JR_SETTINGS = false; renderJourneeView(); }
+  function jrSetDate(d) { JR_DATE = d; renderJourneeView(); }
+  function jrToggle(pid, date, taskId) {
+    var o = jrGet(), rec = jrDayRec(o, pid, date);
+    if (rec.validated) return;
+    if (!o.days[pid]) o.days[pid] = {};
+    var r = o.days[pid][date] || { ticks: {} };
+    if (!r.ticks) r.ticks = {};
+    if (r.ticks[taskId]) delete r.ticks[taskId]; else r.ticks[taskId] = true;
+    o.days[pid][date] = r;
+    jrSave(o); renderJourneeView();
+  }
+  function jrValidate(pid, date) {
+    jrAskParent(function() {
+      var o = jrGet();
+      if (!o.days[pid]) o.days[pid] = {};
+      var r = o.days[pid][date] || { ticks: {} };
+      r.validated = true; r.validatedAt = new Date().toISOString();
+      o.days[pid][date] = r; jrSave(o); renderJourneeView();
+    });
+  }
+  function jrUnvalidate(pid, date) {
+    jrAskParent(function() {
+      var o = jrGet();
+      if (o.days[pid] && o.days[pid][date]) { delete o.days[pid][date].validated; delete o.days[pid][date].validatedAt; }
+      jrSave(o); renderJourneeView();
+    });
+  }
+  function renderJourneeView() {
+    var el = document.getElementById('view-journee');
+    if (!el) return;
+    var kids = ficheChildren(), out = '<div class="back-link" onclick="showView(\'famille\', document.querySelector(\'nav.bottom button[data-view=famille]\'))">‹ Famille</div>';
+    out += '<div class="section-head"><h2>🌈 Ma journée</h2></div>';
+    if (!kids.length) {
+      el.innerHTML = out + '<p class="points-note" style="margin-top:0">Aucun enfant dans la famille pour l\'instant — ajoute-en un dans ⚙️ Famille.</p>';
+      return;
+    }
+    if (!JR_PID || !kids.some(function(p) { return p.id === JR_PID; })) JR_PID = kids[0].id;
+    var today = todayISO();
+    if (!JR_DATE || JR_DATE > today) JR_DATE = today;
+    var o = jrGet(), person = kids.filter(function(p) { return p.id === JR_PID; })[0], pid = person.id, date = JR_DATE;
+    out += '<div class="implication-tabs">' + kids.map(function(p) {
+      return '<button class="implication-tab' + (p.id === pid ? ' active' : '') + '" onclick="jrSetKid(' + jsAttr(p.id) + ')">' + avatarHtml(p, 'implication-tab-avatar') + '<span>' + esc(p.label) + '</span></button>';
+    }).join('') + '</div>';
+    if (JR_SETTINGS) { el.innerHTML = out + jrSettingsHtml(o, person); return; }
+
+    // Bandeau des 7 derniers jours
+    out += '<div class="jr-strip">';
+    for (var i = 6; i >= 0; i--) {
+      var ds = jrAddDays(today, -i), st = jrStatus(o, pid, ds), pd = ds.split('-').map(Number), dt = new Date(pd[0], pd[1] - 1, pd[2]);
+      var ic = st === 'valide' ? '✅' : (st === 'absent' ? '🏠' : (st === 'termine' ? '⏳' : (jrDone(o, pid, ds).n ? '🔸' : '◻️')));
+      out += '<button class="jr-day' + (ds === date ? ' sel' : '') + '" onclick="jrSetDate(' + jsAttr(ds) + ')"><div class="d1">' + (i === 0 ? 'auj.' : JR_DAYS[dt.getDay()]) + '</div><div class="d2">' + pd[2] + '</div><div class="d3">' + ic + '</div></button>';
+    }
+    out += '</div>';
+
+    var rec = jrDayRec(o, pid, date), status = jrStatus(o, pid, date), tasks = jrTasks(o, pid), dn = jrDone(o, pid, date);
+    var stats = jrMonthStats(o, pid, date.slice(0, 7));
+    var pdate = date.split('-').map(Number), longDate = JR_DAYS[new Date(pdate[0], pdate[1] - 1, pdate[2]).getDay()] + ' ' + pdate[2] + ' ' + JR_MONTHS[pdate[1] - 1];
+    out += '<div class="jr-card"><div style="font-weight:700;font-size:16px;margin-bottom:2px;">' + esc(person.label) + ' — ' + (date === today ? 'aujourd\'hui' : esc(longDate)) + '</div>';
+    if (date === today) out += '<div style="font-size:12.5px;color:#66735F;">' + esc(longDate) + '</div>';
+    if (status === 'absent') {
+      out += '<div class="jr-banner" style="margin-top:10px;">🏠 Semaine chez l\'autre parent : la journée est validée automatiquement. Rien à cocher !</div>';
+    } else {
+      out += '<div class="jr-bar"><div style="width:' + (dn.total ? Math.round(dn.n * 100 / dn.total) : 0) + '%"></div></div>';
+      out += '<div style="font-size:12.5px;color:#66735F;margin:-8px 0 10px;">' + dn.n + ' / ' + dn.total + ' tâches faites</div>';
+      tasks.forEach(function(t) {
+        var on = !!(rec.ticks && rec.ticks[t.id]);
+        out += '<button class="jr-task' + (on ? ' done' : '') + (rec.validated ? ' locked' : '') + '" onclick="jrToggle(' + jsAttr(pid) + ',' + jsAttr(date) + ',' + jsAttr(t.id) + ')"><span class="box">' + (on ? '✓' : '') + '</span><span class="lbl">' + esc(t.label) + '</span></button>';
+      });
+      if (!tasks.length) out += '<div class="empty"><div class="icon">🗒️</div>Aucune tâche pour l\'instant — un parent peut en ajouter dans ⚙️ Régler.</div>';
+    }
+    var unlocked = status === 'valide' || status === 'absent';
+    out += '<div class="jr-unlock"><div class="jr-chip ' + (unlocked ? 'on' : 'off') + '">' + (unlocked ? '🎮 Loisirs du jour débloqués' : '🔒 Loisirs : après validation') + '</div>'
+      + '<div class="jr-chip ' + (unlocked ? 'on' : 'off') + '">' + (stats.monthly > 0 ? ('💶 ' + (unlocked ? '+' : '') + fmtEuros(round2(stats.daily)) + ' €' + (unlocked ? ' gagnés' : ' à gagner')) : '💶 Argent de poche non réglé') + '</div></div>';
+    if (status === 'termine') out += '<div class="jr-banner" style="margin-top:12px;background:#E7EEE1;border-color:#9DB894;color:#2C4432;">🎉 Bravo ! Toutes les tâches sont faites. Un parent peut maintenant valider la journée.</div>';
+    if (status === 'valide') {
+      out += '<div class="jr-banner" style="margin-top:12px;background:#E7EEE1;border-color:#9DB894;color:#2C4432;">✅ Journée validée par un parent.</div>';
+      out += '<button class="jr-btn ghost" onclick="jrUnvalidate(' + jsAttr(pid) + ',' + jsAttr(date) + ')">↩︎ Annuler la validation (parent)</button>';
+    } else if (status !== 'absent') {
+      out += '<button class="jr-btn" onclick="jrValidate(' + jsAttr(pid) + ',' + jsAttr(date) + ')">🔒 Valider la journée (parent)</button>';
+    }
+    out += '</div>';
+
+    // Résumé du mois
+    var pm = date.split('-').map(Number);
+    out += '<div class="jr-card"><div style="font-weight:700;margin-bottom:6px;">📅 ' + esc(JR_MONTHS[pm[1] - 1]) + ' ' + pm[0] + '</div>';
+    out += '<div style="font-size:14px;">' + (stats.val + stats.abs) + ' jour' + ((stats.val + stats.abs) > 1 ? 's' : '') + ' validé' + ((stats.val + stats.abs) > 1 ? 's' : '') + (stats.abs ? (' (dont ' + stats.abs + ' en semaine d\'absence)') : '') + ' sur ' + stats.dim + '</div>';
+    if (stats.monthly > 0) {
+      out += '<div style="font-size:22px;font-weight:700;color:#3F5D46;margin:6px 0 2px;font-family:Fraunces,serif;">' + fmtEuros(stats.total) + ' €</div>';
+      out += '<div style="font-size:12.5px;color:#66735F;">Argent de poche du mois : ' + fmtEuros(round2(stats.monthly)) + ' € ÷ ' + stats.dim + ' jours = ' + fmtEuros(round2(stats.daily)) + ' € par jour validé</div>';
+    } else {
+      out += '<div style="font-size:12.5px;color:#66735F;margin-top:4px;">L\'argent de poche mensuel n\'est pas encore réglé : un parent peut le définir dans ⚙️ Régler.</div>';
+    }
+    out += '</div>';
+    out += '<button class="jr-btn ghost" onclick="jrOpenSettings()">⚙️ Régler la fiche (parents)</button>';
+    el.innerHTML = out;
+    var jrStrip = el.querySelector('.jr-strip'); if (jrStrip) jrStrip.scrollLeft = jrStrip.scrollWidth;
+  }
+  // ── Réglages (parents) ──
+  function jrOpenSettings() { jrAskParent(function() { JR_SETTINGS = true; renderJourneeView(); }); }
+  function jrCloseSettings() { JR_SETTINGS = false; renderJourneeView(); }
+  function jrSettingsHtml(o, person) {
+    var pid = person.id, tasks = jrTasks(o, pid), own = jrHasOwnList(o, pid);
+    var out = '<div class="jr-card"><div style="font-weight:700;font-size:16px;margin-bottom:10px;">⚙️ Réglages — ' + esc(person.label) + '</div>';
+    out += '<label class="edit-date-label">💶 Argent de poche du mois (€)</label><div class="jr-set-row"><input type="number" inputmode="decimal" min="0" step="0.5" value="' + (parseFloat(o.config.monthly[pid]) || '') + '" placeholder="ex : 20" onchange="jrSetMonthly(' + jsAttr(pid) + ', this.value)"></div>';
+    out += '<div style="font-size:12px;color:#66735F;margin:-2px 0 12px;">Chaque journée validée rapporte ce montant ÷ le nombre de jours du mois.</div>';
+    out += '<label class="edit-date-label">📋 Tâches de ' + esc(person.label) + ' ' + (own ? '(liste à lui/elle)' : '(modèle de la famille)') + '</label>';
+    tasks.forEach(function(t, i) {
+      out += '<div class="jr-set-row"><input type="text" value="' + esc(t.label) + '" onchange="jrRenameTask(' + jsAttr(pid) + ',' + i + ', this.value)"><button class="jr-x" onclick="jrMoveTask(' + jsAttr(pid) + ',' + i + ',-1)">↑</button><button class="jr-x" style="background:#F4F0E4;color:#66735F" onclick="jrMoveTask(' + jsAttr(pid) + ',' + i + ',1)">↓</button><button class="jr-x" onclick="jrDelTask(' + jsAttr(pid) + ',' + i + ')">✕</button></div>';
+    });
+    out += '<div class="jr-set-row"><input type="text" id="jr-new-task" placeholder="Nouvelle tâche (ex : 🧹 Ranger ma chambre)" onkeydown="if(event.key===\'Enter\')jrAddTask(' + jsAttr(pid) + ')"><button class="jr-x" style="background:#E7EEE1;color:#2C4432" onclick="jrAddTask(' + jsAttr(pid) + ')">＋</button></div>';
+    out += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:6px;">'
+      + '<button class="jr-btn ghost" style="flex:1 1 180px;margin-top:0" onclick="jrSaveAsFamily(' + jsAttr(pid) + ')">📋 Utiliser cette liste comme modèle de la famille</button>'
+      + (own ? '<button class="jr-btn ghost" style="flex:1 1 180px;margin-top:0" onclick="jrResetToFamily(' + jsAttr(pid) + ')">↺ Reprendre le modèle de la famille</button>' : '') + '</div>';
+    out += '<label style="display:flex;gap:8px;align-items:flex-start;margin-top:14px;font-size:13.5px;cursor:pointer;"><input type="checkbox" ' + (o.config.absentAuto !== false ? 'checked' : '') + ' onchange="jrSetAbsentAuto(this.checked)" style="margin-top:3px"><span>Valider automatiquement les journées des semaines marquées « absent » (garde alternée, voir 🏆 Implication)</span></label>';
+    out += '<button class="jr-btn" onclick="jrCloseSettings()">✓ Terminé</button></div>';
+    return out;
+  }
+  function jrEditList(pid, fn) {
+    var o = jrGet(), list = jrTasks(o, pid);
+    fn(list); o.templates[pid] = list; jrSave(o); renderJourneeView();
+  }
+  function jrNewId() { return 't' + Date.now().toString(36) + Math.floor(Math.random() * 100); }
+  function jrAddTask(pid) {
+    var inp = document.getElementById('jr-new-task'), v = inp ? inp.value.trim() : '';
+    if (!v) return;
+    jrEditList(pid, function(l) { l.push({ id: jrNewId(), label: v }); });
+  }
+  function jrRenameTask(pid, i, v) { v = String(v || '').trim(); if (!v) { renderJourneeView(); return; } jrEditList(pid, function(l) { if (l[i]) l[i].label = v; }); }
+  function jrDelTask(pid, i) { jrEditList(pid, function(l) { l.splice(i, 1); }); }
+  function jrMoveTask(pid, i, d) { jrEditList(pid, function(l) { var j = i + d; if (j < 0 || j >= l.length) return; var t = l[i]; l[i] = l[j]; l[j] = t; }); }
+  function jrSaveAsFamily(pid) {
+    var o = jrGet(); o.templates._famille = jrTasks(o, pid); jrSave(o); renderJourneeView();
+  }
+  function jrResetToFamily(pid) { var o = jrGet(); delete o.templates[pid]; jrSave(o); renderJourneeView(); }
+  function jrSetMonthly(pid, v) {
+    var o = jrGet(), n = parseFloat(String(v).replace(',', '.'));
+    if (isNaN(n) || n <= 0) delete o.config.monthly[pid]; else o.config.monthly[pid] = round2(n);
+    jrSave(o); renderJourneeView();
+  }
+  function jrSetAbsentAuto(on) { var o = jrGet(); o.config.absentAuto = !!on; jrSave(o); }
   // Les 4 destinations de l'écran d'accueil : dès qu'on en ouvre une, la barre du bas apparaît
   // (et reste là) pour naviguer librement entre elles, sans repasser par l'accueil à chaque fois.
   var TOP_LEVEL_VIEWS = ['today', 'taches', 'famille', 'courses'];
@@ -7037,6 +7299,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     if (view === 'famille') renderFamilleHub();
     if (view === 'rappel') renderRappelView();
     if (view === 'fiches') renderFichesHub();
+    if (view === 'journee') renderJourneeView();
     if (view === 'tuto') renderTutoViewMH();
     if (view === 'acces') {
       if (ADMIN_UNLOCKED) {
