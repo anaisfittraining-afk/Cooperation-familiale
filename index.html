@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-09-29-d';
+window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -807,6 +807,14 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   .jr-set-row input[type=text] { flex: 1; min-width: 0; padding: 10px 12px; border: 1.5px solid #E2DCC8; border-radius: 10px; font-size: 15px; font-family: inherit; }
   .jr-set-row input[type=number] { width: 110px; padding: 10px 12px; border: 1.5px solid #E2DCC8; border-radius: 10px; font-size: 15px; font-family: inherit; }
   .jr-x { flex: 0 0 auto; border: none; background: #fff5f5; color: #c53030; border-radius: 10px; padding: 9px 11px; cursor: pointer; font-size: 14px; }
+  .histo-people { display: flex; flex-wrap: wrap; gap: 8px; margin: 4px 0 12px; }
+  .histo-person { border: 1.5px solid var(--dot-color, #999); background: #fff; color: #2d3748; border-radius: 999px; padding: 7px 14px; font-size: 14px; font-weight: 700; cursor: pointer; font-family: inherit; }
+  .histo-person.on { background: var(--dot-color, #999); color: #fff; }
+  .histo-month { display: flex; align-items: center; justify-content: center; gap: 16px; margin: 4px 0 8px; font-weight: 700; font-size: 16px; text-transform: capitalize; }
+  .histo-month button { border: none; background: #E7EEE1; color: #3F5D46; width: 36px; height: 36px; border-radius: 50%; font-size: 20px; cursor: pointer; font-family: inherit; }
+  .histo-row { margin-bottom: 8px; }
+  .histo-notdone { font-size: 12.5px; color: var(--muted, #718096); line-height: 1.6; padding: 4px 6px 10px; }
+  .histo-notdone summary { cursor: pointer; font-weight: 700; }
 </style>
 </head>
 <body>
@@ -1183,6 +1191,20 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
           </div>
         </div>
         <div class="backup-zone">
+          <div class="backup-title">🛡️ Instantanés de sécurité (copies datées dans le cloud)</div>
+          <div class="backup-panel" style="display:flex;flex-direction:column;gap:8px;">
+            <p class="backup-hint">Des copies des cagnottes, remises, dettes, cases cochées et points sont gardées automatiquement (à l'ouverture de l'appli, avant une annulation ou une réinitialisation, et quand deux appareils se contredisent). Elles ne sont jamais écrasées : si quelque chose a disparu, retrouve ici une copie d'avant.</p>
+            <button class="backup-btn-merge" onclick="safetyUiLoadDays()">📂 Voir les instantanés</button>
+            <div id="safetyDays"></div>
+            <div id="safetyList"></div>
+            <div id="safetyRestoreZone" style="display:none;">
+              <input type="text" inputmode="numeric" autocomplete="off" id="safetyRestoreCode" class="reset-code-input" placeholder="Code de confirmation pour restaurer">
+              <div id="safetyRestoreError" class="reset-code-error" style="display:none;">❌ Code incorrect.</div>
+            </div>
+            <div id="safetyStatus" class="backup-status"></div>
+          </div>
+        </div>
+        <div class="backup-zone">
           <div class="backup-title">➕ Créditer manuellement un pot (argent de poche)</div>
           <div class="backup-panel" id="pocketCreditPanel">
             <p class="backup-hint">Pour corriger à la main le pot d'un enfant (ex : présence différente un mois donné). Le nombre de points est ajouté à ce qu'il a déjà — mets un nombre négatif pour en retirer si besoin. Chaque régularisation reste visible ci-dessous et peut être annulée.</p>
@@ -1217,6 +1239,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
       <h2>💰 Ça rapporte</h2>
       <button class="reset-btn" id="resetPeriodBtn-argent" onclick="toggleResetPeriodConfirm('argent')">↺ Tout décocher</button>
     </div>
+    <p class="points-note" id="argent-week-note" style="margin-top:0;"></p>
     <div class="reset-points-confirm" id="resetPeriodConfirm-argent" style="display:none;">
       <span>Décoche toutes les tâches de "Ça rapporte", pour tout le monde. Confirmer ?</span>
       <input type="text" inputmode="numeric" autocomplete="off" id="resetPeriodCode-argent" class="reset-code-input" placeholder="Code de confirmation" onkeydown="if(event.key==='Enter')confirmResetPeriod('argent')">
@@ -1352,6 +1375,10 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   <div class="view" id="view-fiches"></div>
 
   <div class="view" id="view-tuto"></div>
+
+  <div class="view" id="view-histo"></div>
+
+  <div class="view" id="view-planning"></div>
 
   <div class="view" id="view-taches"></div>
   <div class="view" id="view-famille"></div>
@@ -1879,7 +1906,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   // charge bien la toute dernière version publiée, ou une version mise en cache par le navigateur.
   // Même valeur que window.MH_BUILD_VERSION (voir le script anti-cache tout en haut du fichier) — une
   // seule source de vérité, pour ne plus jamais avoir à mettre à jour deux numéros de version séparés.
-  var APP_BUILD_VERSION = window.MH_BUILD_VERSION || '2026-09-29-d';
+  var APP_BUILD_VERSION = window.MH_BUILD_VERSION || '2026-11-05-securite';
   var TASKS_KEY = nsKey('mh_tasks_v1');
   var CHECKS_KEY = nsKey('mh_checks_v1');
   var SHARED_CREDIT_KEY = nsKey('mh_shared_credit_v1'); // { period: { periodKey: { taskId: { personId: pointsCredités } } } } — quand une tâche "faite à plusieurs" a réparti les points au lieu de créditer le plein tarif à chacun
@@ -2003,6 +2030,111 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   // 🌈 Ma journée (fiche du jour des enfants) : données propres, isolées par famille (nsKey) et synchronisées.
   var DAYSHEET_KEY = nsKey('mh_daysheet_v1'); // { config:{monthly:{personId:€},absentAuto}, templates:{_famille:[…],personId:[…]}, days:{personId:{'YYYY-MM-DD':{ticks:{taskId:true},validated,validatedAt}}} }
   SYNC_KEYS.push(DAYSHEET_KEY);
+  // 📅 Journal des dates : une ligne à chaque fois qu'une tâche hebdo/mensuelle/exceptionnelle/"Ça rapporte"
+  // est cochée { p: personne, t: tâche, per: période, k: clé de période, d: date du jour }. Nouvelle clé,
+  // isolée par famille : elle n'écrase aucune donnée existante. Les tâches quotidiennes n'en ont pas besoin
+  // (leurs cases sont déjà rangées par date).
+  var DONELOG_KEY = nsKey('mh_donelog_v1');
+  SYNC_KEYS.push(DONELOG_KEY);
+  var PLAN_KEY = nsKey('mh_plan_v1'); // 🗓️ Programme de la semaine : { on, weekly:{taskId:{a:1-7,s:1-7}}, monthly:{taskId:{w:1-4,d:1-7}} }
+  SYNC_KEYS.push(PLAN_KEY);
+
+  // ── 🛡️ PROTECTION CONTRE L'ÉCRASEMENT ───────────────────────────────────────────────────────────
+  // 1) Un appareil qui n'est pas à jour ne peut plus écraser les données des autres : avant d'envoyer, on vérifie
+  //    que personne d'autre n'a publié depuis notre dernière synchro ; sinon on FUSIONNE (la version la plus
+  //    récente est gardée, les deux versions sont sauvegardées) au lieu d'écraser.
+  // 2) "Instantanés de sécurité" : des copies datées (cagnottes, remises, dettes, cases, points…) rangées à part
+  //    dans le cloud — jamais écrasées — restaurables dans ⚙️ Paramètres › Technique › 🛡️ Instantanés.
+  var SEEN_AT_KEY = nsKey('mh_sync_seen_at_v1');   // date (_at) du dernier état partagé vu/envoyé par CET appareil
+  var SYNC_BASE_KEY = nsKey('mh_sync_base_v1');    // empreinte de chaque donnée à cet instant (détecte ce qui a changé ici)
+  var SAFETY_LAST_KEY = nsKey('mh_safety_last_v1');
+  var SAFETY_PRUNE_KEY = nsKey('mh_safety_prune_v1');
+  var SAFETY_KEYS = [WALLET_KEY, RECEIVED_KEY, DISTRIB_HISTORY_KEY, ARGENT_MONTH_KEY, DEBTS_KEY, POCKET_KEY, POCKET_ADJUST_KEY, POCKET_MONTH_HISTORY_KEY,
+    FORCE_VALID_KEY, FORCE_CLOSE_MONTH_KEY, WEEKLY_BONUS_STATE_KEY, WEEKLY_BONUS_HISTORY_KEY, MONTHLY_BONUS_USED_KEY, SAVINGS_GOAL_KEY,
+    MALUS_KEY, CHECKS_KEY, SHARED_CREDIT_KEY, DONELOG_KEY];
+  var SAFETY_KEYSET = {};
+  SAFETY_KEYS.forEach(function(k) { SAFETY_KEYSET[k] = true; });
+  var SAFETY_GROUPS = {
+    argent: [WALLET_KEY, RECEIVED_KEY, DISTRIB_HISTORY_KEY, ARGENT_MONTH_KEY, DEBTS_KEY, POCKET_KEY, POCKET_ADJUST_KEY, POCKET_MONTH_HISTORY_KEY, FORCE_VALID_KEY, FORCE_CLOSE_MONTH_KEY, WEEKLY_BONUS_STATE_KEY, WEEKLY_BONUS_HISTORY_KEY, MONTHLY_BONUS_USED_KEY, SAVINGS_GOAL_KEY],
+    cases: [CHECKS_KEY, MALUS_KEY, SHARED_CREDIT_KEY, DONELOG_KEY]
+  };
+  function safeKeyName(k) { return String(k).replace(/[.#$\[\]\/]/g, '_'); }
+  function hashStr(v) {
+    var s = (v == null) ? '' : String(v), h = 5381;
+    for (var i = 0; i < s.length; i++) h = ((h << 5) + h + s.charCodeAt(i)) | 0;
+    return s.length + ':' + h;
+  }
+  function fbSafetyPath() { return CLIENT_CODE ? ('clients/' + CLIENT_CODE + '/safety') : 'safety'; }
+  function fbSafetyIndexPath() { return CLIENT_CODE ? ('clients/' + CLIENT_CODE + '/safety_index') : 'safety_index'; }
+  function getSyncBaseline() { try { return JSON.parse(localStorage.getItem(SYNC_BASE_KEY) || '{}') || {}; } catch (e) { return {}; } }
+  // Mémorise : "à cet instant, cet appareil est aligné sur l'état partagé daté _at".
+  function syncMarkSeen(at, state) {
+    try {
+      localStorage.setItem(SEEN_AT_KEY, String(at || 0));
+      var base = {};
+      SYNC_KEYS.forEach(function(k) { base[k] = hashStr(state ? state[k] : localStorage.getItem(k)); });
+      localStorage.setItem(SYNC_BASE_KEY, JSON.stringify(base));
+    } catch (e) {}
+  }
+  function safetyWrite(rec) {
+    if (!fbDB) return;
+    var day = todayISO();
+    var id = 's' + Date.now().toString(36) + '_' + Math.random().toString(36).slice(2, 5);
+    try {
+      fbDB.ref(fbSafetyPath() + '/' + day + '/' + id).set(rec);
+      fbDB.ref(fbSafetyIndexPath() + '/' + day).set(true);
+    } catch (e) {}
+  }
+  function safetyBuild(reason, source) {
+    var d = {};
+    SAFETY_KEYS.forEach(function(k) {
+      var v = source ? source[k] : localStorage.getItem(k);
+      if (v != null) d[safeKeyName(k)] = v;
+    });
+    return { t: Date.now(), reason: reason, from: getClientId(), d: d };
+  }
+  // Instantané des données importantes. force=true pour les actions sensibles ; sinon au plus un toutes les 6 h.
+  function safetyTake(reason, opts) {
+    opts = opts || {};
+    if (!fbDB) return;
+    try {
+      if (!opts.force && !opts.data) {
+        var last = parseInt(localStorage.getItem(SAFETY_LAST_KEY) || '0', 10) || 0;
+        if (Date.now() - last < 6 * 3600 * 1000) return;
+      }
+      if (!opts.data) localStorage.setItem(SAFETY_LAST_KEY, String(Date.now()));
+    } catch (e) {}
+    safetyWrite(safetyBuild(reason, opts.data || null));
+  }
+  // Garde la valeur d'une seule donnée sur le point d'être remplacée par la version d'un autre appareil.
+  function safetyArchive(key, value, reason, ts) {
+    var d = {}; d[safeKeyName(key)] = value;
+    safetyWrite({ t: ts || Date.now(), reason: reason, from: getClientId(), d: d, single: true });
+  }
+  function safetyPruneOld() {
+    if (!fbDB) return;
+    try {
+      var today = todayISO();
+      if (localStorage.getItem(SAFETY_PRUNE_KEY) === today) return;
+      localStorage.setItem(SAFETY_PRUNE_KEY, today);
+    } catch (e) {}
+    var limit = new Date(); limit.setDate(limit.getDate() - 60);
+    var limitISO = limit.getFullYear() + '-' + pad2(limit.getMonth() + 1) + '-' + pad2(limit.getDate());
+    fbDB.ref(fbSafetyIndexPath()).once('value').then(function(snap) {
+      var days = snap.val() || {};
+      Object.keys(days).forEach(function(day) {
+        if (day < limitISO) { fbDB.ref(fbSafetyPath() + '/' + day).remove(); fbDB.ref(fbSafetyIndexPath() + '/' + day).remove(); }
+      });
+    }).catch(function() {});
+  }
+  function syncShowConflictBanner(n) {
+    if (document.getElementById('syncConflictBanner')) return;
+    var b = document.createElement('div');
+    b.id = 'syncConflictBanner';
+    b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:#B8892B;color:#fff;padding:10px 38px 10px 14px;font-size:13px;font-weight:600;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+    b.innerHTML = '🛡️ Deux appareils avaient modifié la même chose : la version la plus récente a été gardée, et l\'autre est sauvegardée (⚙️ Paramètres › Technique › 🛡️ Instantanés).<span onclick="this.parentNode.remove()" style="position:absolute;right:12px;top:8px;cursor:pointer;font-size:16px;">✕</span>';
+    document.body.appendChild(b);
+  }
   var firebaseConfig = {
     apiKey: "AIzaSyC9BmsyRf2MY7qxRO7bL1wRhkJuig0IcLQ",
     authDomain: "cooperation-familiale.firebaseapp.com",
@@ -2024,7 +2156,10 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   var SYNC_PENDING_KEY = nsKey('mh_sync_pending_v1');
   // Identifiant unique à cet appareil/navigateur, pour reconnaître l'écho de nos propres écritures quand
   // elles reviennent via l'écoute en direct, et ne pas les retraiter inutilement.
-  var CLIENT_ID_KEY = 'mh_client_id_v1';
+  // v2 : l'ancienne clé (v1) était recopiée d'un appareil à l'autre par la sauvegarde "clé par clé" — tous les
+  // appareils finissaient avec le MÊME identifiant, donc les mises à jour des autres étaient prises pour nos propres
+  // écritures et ignorées. La nouvelle clé reste propre à chaque appareil (exclue de la synchro, voir KEYSYNC_EXCLUDE).
+  var CLIENT_ID_KEY = 'mh_client_id_v2';
   function getClientId() {
     var id = null;
     try { id = localStorage.getItem(CLIENT_ID_KEY); } catch (e) {}
@@ -2062,6 +2197,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
         try { localStorage.setItem(k, state[k]); } catch (e) { keysyncShowIncompleteWarning(); }
       }
     });
+    if (state && state._at) syncMarkSeen(state._at, null);
   }
   function scheduleSyncPublish() {
     try { localStorage.setItem(SYNC_PENDING_KEY, '1'); } catch (e) {}
@@ -2077,13 +2213,65 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   function doSyncPublish() {
     if (!fbDB) return;
     setSyncStatus('🔄 Synchro : envoi en cours…');
+    var ref = fbDB.ref(fbStatePath());
+    var me = getClientId();
+    // Garde-fou : on vérifie qu'aucun AUTRE appareil n'a publié depuis notre dernière synchro. Si c'est le cas,
+    // cet appareil n'est pas à jour : on fusionne au lieu d'écraser. Si la vérification est impossible (hors
+    // ligne…), on n'envoie rien — le marqueur "en attente" reste, et on retentera.
+    Promise.all([ref.child('_at').once('value'), ref.child('_from').once('value')]).then(function(r) {
+      var remoteAt = r[0].val() || 0, remoteFrom = r[1].val();
+      var seen = 0; try { seen = parseInt(localStorage.getItem(SEEN_AT_KEY) || '0', 10) || 0; } catch (e) {}
+      if (remoteAt && remoteAt > seen && remoteFrom !== me) return syncMergePublish(ref);
+      return syncPlainPublish(ref);
+    }).catch(function(err) {
+      setSyncStatus('⏳ Synchro : vérification impossible pour l\'instant, nouvel essai plus tard' + (err && err.message ? ' (' + err.message + ')' : ''));
+    });
+  }
+  function syncPlainPublish(ref) {
     var state = collectSyncState();
     state._from = getClientId();
     state._at = Date.now();
-    fbDB.ref(fbStatePath()).set(state).catch(function(err) {
+    return ref.set(state).then(function() {
+      syncMarkSeen(state._at, state);
+    }).catch(function(err) {
       // SYNC_PENDING_KEY reste à '1' tant que ce n'est pas confirmé — on retentera à la prochaine
       // modification, ou dès que la connexion reviendra (Firebase retente aussi tout seul en coulisses).
       setSyncStatus('❌ Synchro : échec de l\'envoi (' + (err && err.message ? err.message : 'erreur') + ')');
+    });
+  }
+  // Un autre appareil a publié depuis notre dernière synchro : on relit l'état partagé et on fusionne donnée par
+  // donnée. Seul(e) à avoir changé une donnée → on garde cette version. Changée des deux côtés → on garde la plus
+  // récente (celle du cloud) et on sauvegarde l'autre dans les instantanés. Rien n'est perdu.
+  function syncMergePublish(ref) {
+    return ref.once('value').then(function(snap) {
+      var remote = snap.val() || {};
+      var local = collectSyncState();
+      var base = getSyncBaseline();
+      safetyTake('conflit-distant', { data: remote });
+      safetyTake('conflit-local', { data: local });
+      var merged = {}, conflicts = [], changedLocal = false;
+      SYNC_KEYS.forEach(function(k) {
+        var l = local[k], r = (remote[k] === undefined ? null : remote[k]);
+        var lh = hashStr(l), rh = hashStr(r), bh = base[k];
+        if (lh === rh) { merged[k] = l; return; }
+        var localChanged = (bh !== undefined) && lh !== bh;     // modifiée ICI depuis la dernière synchro
+        var remoteChanged = (bh === undefined) || rh !== bh;    // modifiée AILLEURS (ou inconnu : on suppose que oui)
+        if (localChanged && !remoteChanged) merged[k] = l;
+        else { merged[k] = r; if (localChanged && remoteChanged) conflicts.push(k); }
+      });
+      SYNC_KEYS.forEach(function(k) {
+        if (merged[k] != null && merged[k] !== local[k]) { try { localStorage.setItem(k, merged[k]); changedLocal = true; } catch (e) { keysyncShowIncompleteWarning(); } }
+      });
+      merged._from = getClientId();
+      merged._at = Date.now();
+      return ref.set(merged).then(function() {
+        syncMarkSeen(merged._at, merged);
+        if (changedLocal) reloadAllFromStorage();
+        if (conflicts.length) syncShowConflictBanner(conflicts.length);
+        setSyncStatus('🛡️ Synchro : mise à jour fusionnée sans rien écraser (' + nowHM() + ')');
+      });
+    }).catch(function(err) {
+      setSyncStatus('❌ Synchro : fusion impossible (' + (err && err.message ? err.message : 'erreur') + ')');
     });
   }
   // Recharge entièrement l'affichage depuis le localStorage (après avoir récupéré l'état partagé au démarrage)
@@ -2138,6 +2326,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
           maybeShowFamilySetup();
         }
         SYNC_READY = true;
+        try { safetyTake('ouverture'); safetyPruneOld(); } catch (e) {}
         // Après (et seulement après) que l'état partagé ait été adopté ou décidé comme référence à publier
         // ci-dessus — jamais avant, voir le commentaire sur ensurePocketOneTimeAdjustments plus haut.
         ensurePocketOneTimeAdjustments();
@@ -2180,6 +2369,8 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   var KEYSYNC_META_KEY = nsKey('mh_keysync_meta_v1'); // { [clé]: dernier horodatage appliqué }
   var KEYSYNC_EXCLUDE = {};
   KEYSYNC_EXCLUDE[KEYSYNC_META_KEY] = true;
+  KEYSYNC_EXCLUDE[CLIENT_ID_KEY] = true; KEYSYNC_EXCLUDE['mh_client_id_v1'] = true; // identifiant propre à l'appareil
+  KEYSYNC_EXCLUDE[SEEN_AT_KEY] = true; KEYSYNC_EXCLUDE[SYNC_BASE_KEY] = true; KEYSYNC_EXCLUDE[SAFETY_LAST_KEY] = true; KEYSYNC_EXCLUDE[SAFETY_PRUNE_KEY] = true; // repères propres à l'appareil
   KEYSYNC_EXCLUDE[SYNC_PENDING_KEY] = true; // purement transitoire (marqueur "pas encore envoyé"), pas la peine de la sauvegarder
   var keysyncOriginalSetItem = null;
   var keysyncOriginalRemoveItem = null;
@@ -2204,9 +2395,21 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   function keysyncPushKey(key, value) {
     if (!fbDB) return;
     var now = Date.now();
-    fbDB.ref(fbKeysPath() + '/' + keysyncSafeKey(key)).set({ v: value, t: now }).then(function() {
-      keysyncSetMetaTs(key, now);
-    }).catch(function(err) { console.error('Sauvegarde cloud de "' + key + '" impossible :', err); });
+    var path = fbKeysPath() + '/' + keysyncSafeKey(key);
+    var doSet = function() {
+      fbDB.ref(path).set({ v: value, t: now }).then(function() {
+        keysyncSetMetaTs(key, now);
+      }).catch(function(err) { console.error('Sauvegarde cloud de "' + key + '" impossible :', err); });
+    };
+    if (SAFETY_KEYSET[key]) {
+      // Données importantes : si le cloud contient une version plus récente que celle que nous avons vue, on la
+      // met de côté avant de la remplacer.
+      fbDB.ref(path).once('value').then(function(snap) {
+        var r = snap.val();
+        if (r && typeof r.t === 'number' && r.t > (keysyncGetMeta()[key] || 0) && r.v !== value) safetyArchive(key, r.v, 'remplacee-par-un-autre-appareil', r.t);
+        doSet();
+      }).catch(doSet);
+    } else { doSet(); }
   }
   function keysyncPushRemove(key) {
     if (!fbDB) return;
@@ -2223,7 +2426,15 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
       if (KEYSYNC_EXCLUDE[k] || meta[k]) continue;
-      keysyncPushKey(k, localStorage.getItem(k));
+      // Si cette donnée existe déjà dans le cloud, on ne l'écrase JAMAIS à l'ouverture (elle peut être plus récente
+      // que la copie locale) : c'est l'écoute en direct ci-dessous qui l'applique ici.
+      (function(key) {
+        fbDB.ref(fbKeysPath() + '/' + keysyncSafeKey(key)).once('value').then(function(snap) {
+          var cur = snap.val();
+          if (cur !== null && cur !== undefined) return;
+          keysyncPushKey(key, localStorage.getItem(key));
+        }).catch(function() {});
+      })(k);
     }
   }
   function keysyncApplyChild(snap) {
@@ -2527,9 +2738,9 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     all[ym][personId][taskId] = (all[ym][personId][taskId] || 0) + 1;
     saveArgentMonthAll(all);
   }
-  function subtractArgentMonthPoints(personId, taskId) {
+  function subtractArgentMonthPoints(personId, taskId, ymOverride) {
     var all = getArgentMonthAll();
-    var ym = periodKey('monthly');
+    var ym = ymOverride || periodKey('monthly');
     var existing = (all[ym] || {})[personId];
     if (existing == null) return;
     if (typeof existing === 'number') {
@@ -2787,6 +2998,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   }
 
   function undoDistribution(distId) {
+    safetyTake('avant-annulation-de-repartition', { force: true });
     var hist = getDistribHistoryAll();
     var idx = hist.findIndex(function(r){ return r.id === distId; });
     if (idx < 0) return;
@@ -2899,6 +3111,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
   }
 
   function undoReceived(recId) {
+    safetyTake('avant-annulation-de-remise', { force: true });
     var hist = getReceivedHistoryAll();
     var idx = hist.findIndex(function(r){ return r.id === recId; });
     if (idx < 0) return;
@@ -3399,6 +3612,222 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     return 'background: linear-gradient(135deg, ' + c1 + ', ' + c2 + '); border-color: ' + edge + '; border-left: 6px solid ' + edge + ';';
   }
 
+
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  // 🗓️ PROGRAMME DE LA SEMAINE : à chaque tâche hebdo, un jour fixe (un jour pour les semaines AVEC les
+  // enfants, un autre pour les semaines SANS) ; à chaque tâche mensuelle, une semaine du mois + un jour.
+  // Les tâches elles-mêmes (points, pièces, cases cochées) ne sont JAMAIS modifiées : le programme est
+  // rangé à part (PLAN_KEY) et ne sert qu'à dire quand une tâche s'affiche dans « Aujourd'hui ».
+  // Une tâche sans jour fixe garde l'ancien fonctionnement (prochaine échéance = dernière fois + 7 j / 1 mois).
+  // ══════════════════════════════════════════════════════════════════════════════════════════════
+  var PLAN_DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche'];
+  var PLAN_VIEW_MODE = null; // 'a' (avec enfants) ou 's' (sans enfants) — onglet affiché
+  function planGet() {
+    try { var p = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'); if (p && typeof p === 'object') { p.weekly = p.weekly || {}; p.monthly = p.monthly || {}; return p; } } catch (e) {}
+    return { on: false, weekly: {}, monthly: {} };
+  }
+  function planSave(p) { localStorage.setItem(PLAN_KEY, JSON.stringify(p)); scheduleSyncPublish(); }
+  function planDow(dateStr) { var q = dateStr.split('-').map(Number); return ((new Date(q[0], q[1] - 1, q[2]).getDay() + 6) % 7) + 1; }
+  // Semaine « sans enfants » = tous les enfants marqués absents cette semaine ISO (voir Présence)
+  function planKidFree(weekKey) {
+    var kids = ficheChildren();
+    return !!kids.length && kids.every(function(k) { return isChildAbsentWeek(k.id, weekKey); });
+  }
+  // Date (YYYY-MM-DD) du jour prévu pour une tâche hebdo, dans la semaine de dateStr
+  function planWeeklyDate(pl, dateStr) {
+    var wk = isoWeekKeyForDate(dateStr), dow = planKidFree(wk) ? pl.s : pl.a;
+    if (!dow) return null;
+    return addDaysISO(dateStr, dow - planDow(dateStr));
+  }
+  // Date prévue d'une tâche mensuelle dans le mois de dateStr : le jour « d » du bloc de 7 jours n° « w »
+  function planMonthlyDate(pl, dateStr) {
+    if (!pl || !pl.w || !pl.d) return null;
+    var q = dateStr.split('-').map(Number), start = 7 * (pl.w - 1) + 1;
+    for (var day = start; day < start + 7; day++) {
+      if (day > daysInMonth(q[0], q[1] - 1)) break;
+      var ds = q[0] + '-' + pad2(q[1]) + '-' + pad2(day);
+      if (planDow(ds) === pl.d) return ds;
+    }
+    return null;
+  }
+  // null = pas de programme pour cette tâche (ancien fonctionnement) ; sinon vrai/faux « à faire aujourd'hui »
+  function planDueToday(period, taskId) {
+    var plan = planGet(); if (!plan.on) return null;
+    var today = todayISO(), pl = (period === 'weekly' ? plan.weekly : period === 'monthly' ? plan.monthly : {})[taskId];
+    if (!pl) return null;
+    var planned = period === 'weekly' ? planWeeklyDate(pl, today) : planMonthlyDate(pl, today);
+    if (!planned) return null;
+    if (planned === today) return true;
+    if (planned < today) { // prévue plus tôt dans la semaine / le mois et pas encore faite : elle reste à faire
+      var done = (getChecksForRealToday(period)[taskId] || []).length > 0;
+      return !done;
+    }
+    return false;
+  }
+  function planBadgeHtml(period, taskId) {
+    var plan = planGet(); if (!plan.on) return '';
+    var pl = (period === 'weekly' ? plan.weekly : plan.monthly)[taskId]; if (!pl) return '';
+    if (period === 'weekly') {
+      var a = pl.a ? PLAN_DAYS[pl.a] : '', s = pl.s ? PLAN_DAYS[pl.s] : '';
+      if (!a && !s) return '';
+      return ' <span class="repeat-badge" title="Jour prévu au programme">🗓️ ' + (a === s ? a : (a || '—') + ' / ' + (s || '—')) + '</span>';
+    }
+    return pl.w && pl.d ? ' <span class="repeat-badge" title="Jour prévu au programme">🗓️ sem. ' + pl.w + ' · ' + PLAN_DAYS[pl.d] + '</span>' : '';
+  }
+
+  // ── Génération du programme à partir des tâches EXISTANTES ──
+  // Préférences par mot-clé : [expression, jour semaine AVEC enfants, jour semaine SANS enfants].
+  // AVEC enfants : le gros se fait le vendredi (les enfants partent). SANS enfants : le gros le mercredi
+  // après-midi, et quelques grosses tâches (jardin, vitres) le samedi matin. Le reste est réparti à
+  // l'équilibre des points sur les autres jours ; un jour « gros » est plafonné pour ne pas déborder.
+  var PLAN_RULES = [
+    [/aspirateur/i, 5, 3], [/sols|serpill/i, 5, 3], [/salle de bain|\bsdb\b|douche|\bwc\b/i, 5, 3],
+    [/vitre|miroir/i, 5, 6], [/courses/i, 5, 5], [/lessive/i, 1, 1], [/draps/i, 1, 4],
+    [/repass/i, 3, 4], [/d[ée]poussi/i, 2, 2], [/frigo/i, 4, 1], [/poubelle/i, 3, 3]
+  ];
+  function planGenerate() {
+    var all = getTasksAll(), plan = { on: true, weekly: {}, monthly: {}, generatedAt: new Date().toISOString() };
+    var modes = [
+      { k: 'a', big: 5, caps: { 1: 7, 2: 7, 3: 7, 4: 8, 5: 20, 6: 14, 7: 0 }, allowed: [1, 2, 3, 4, 5, 6] },
+      { k: 's', big: 3, caps: { 1: 7, 2: 7, 3: 16, 4: 7, 5: 9, 6: 14, 7: 0 }, allowed: [1, 2, 3, 4, 5, 6, 7] }
+    ];
+    var weekly = (all.weekly || []).slice().sort(function(x, y) { return (y.pts || 0) - (x.pts || 0); });
+    modes.forEach(function(m) {
+      var load = { 1: 0, 2: 0, 3: 0, 4: 0, 5: 0, 6: 0, 7: 0 };
+      weekly.forEach(function(task) {
+        var pts = task.pts || 1, pref = 0, i;
+        if (task.grp === 'jardin') pref = 6;
+        for (i = 0; i < PLAN_RULES.length; i++) { if (PLAN_RULES[i][0].test(task.text || '')) { pref = m.k === 'a' ? PLAN_RULES[i][1] : PLAN_RULES[i][2]; break; } }
+        var day = (pref && load[pref] + pts <= m.caps[pref]) ? pref : 0;
+        if (!day) {
+          var best = null;
+          m.allowed.forEach(function(d) { if (m.caps[d] && load[d] + pts <= m.caps[d] && (best === null || load[d] < load[best])) best = d; });
+          if (best === null) m.allowed.forEach(function(d) { if (best === null || load[d] < load[best]) best = d; });
+          day = best;
+        }
+        load[day] += pts;
+        if (!plan.weekly[task.id]) plan.weekly[task.id] = {};
+        plan.weekly[task.id][m.k] = day;
+      });
+    });
+    var monthly = (all.monthly || []).slice().sort(function(x, y) { return (y.pts || 0) - (x.pts || 0); });
+    var wLoad = [0, 0, 0, 0], dCount = [{}, {}, {}, {}], order = [2, 4, 1, 3, 5];
+    monthly.forEach(function(task) {
+      var w = 0; for (var i = 1; i < 4; i++) { if (wLoad[i] < wLoad[w]) w = i; }
+      var day;
+      if (task.grp === 'jardin') day = 6;
+      else { day = order[0]; order.forEach(function(d) { if ((dCount[w][d] || 0) < (dCount[w][day] || 0)) day = d; }); }
+      dCount[w][day] = (dCount[w][day] || 0) + 1; wLoad[w] += (task.pts || 1);
+      plan.monthly[task.id] = { w: w + 1, d: day };
+    });
+    return plan;
+  }
+  function planGenerateAsk() {
+    var had = planGet().on;
+    if (had && !window.confirm('Recréer tout le programme à partir de tes tâches actuelles ? Les jours que tu as choisis à la main seront remplacés. Tes tâches, tes points et tes cases cochées ne changent pas.')) return;
+    planSave(planGenerate());
+    renderPlanningView();
+    try { renderToday(); } catch (e) {}
+  }
+  function planOff() {
+    if (!window.confirm('Désactiver le programme ? Les tâches hebdo et mensuelles reviennent au fonctionnement d\'avant (prochaine échéance = dernière fois + 7 jours / 1 mois). Le programme est gardé si tu veux le réactiver.')) return;
+    var p = planGet(); p.on = false; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {}
+  }
+  function planOn() { var p = planGet(); p.on = true; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {} }
+  function planSetWeekly(taskId, mode, val) {
+    var p = planGet(); if (!p.weekly[taskId]) p.weekly[taskId] = {};
+    p.weekly[taskId][mode] = parseInt(val, 10) || 0; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {}
+  }
+  function planSetMonthly(taskId, field, val) {
+    var p = planGet(); if (!p.monthly[taskId]) p.monthly[taskId] = { w: 1, d: 2 };
+    p.monthly[taskId][field] = parseInt(val, 10) || 0; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {}
+  }
+  function planSetViewMode(m) { PLAN_VIEW_MODE = m; renderPlanningView(); }
+  function planToggleThisWeek() {
+    var wk = isoWeekKeyForDate(todayISO()), kids = ficheChildren(); if (!kids.length) return;
+    var free = planKidFree(wk);
+    kids.forEach(function(k) { if (isChildAbsentWeek(k.id, wk) === free) toggleChildAbsence(k.id, wk); });
+    renderPlanningView(); try { renderToday(); } catch (e) {}
+  }
+  function planSelectHtml(opts, cur, onchange) {
+    return '<select onchange="' + onchange + '" style="padding:5px 6px;border:1.5px solid var(--border,#E2DCC8);border-radius:8px;font-size:12.5px;background:#fff;max-width:128px">' +
+      opts.map(function(o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur || 0) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
+  }
+  function renderPlanningView() {
+    var el = document.getElementById('view-planning'); if (!el) return;
+    var plan = planGet(), all = getTasksAll(), wk = isoWeekKeyForDate(todayISO()), free = planKidFree(wk), kids = ficheChildren();
+    if (!PLAN_VIEW_MODE) PLAN_VIEW_MODE = free ? 's' : 'a';
+    var out = '<div class="back-link" onclick="showView(\'taches\', null)">‹ Tâches ménagères</div>';
+    out += '<div class="section-head"><h2>🗓️ Programme de la semaine</h2></div>';
+    out += '<p class="points-note" style="margin-top:0">Chaque tâche hebdo a son jour (un jour quand les enfants sont là, un autre quand ils sont partis), chaque tâche mensuelle a sa semaine du mois et son jour. Les tâches prévues le jour même apparaissent dans <b>Aujourd\'hui</b>, et restent à faire les jours suivants tant qu\'elles ne sont pas cochées.</p>';
+    if (!(all.weekly || []).length && !(all.monthly || []).length) { el.innerHTML = out + '<div class="today-empty">Ajoute d\'abord des tâches hebdo ou mensuelles.</div>'; return; }
+    out += '<div class="cat-block"><div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">';
+    if (!plan.on) {
+      out += (Object.keys(plan.weekly).length ? 'Le programme est <b>désactivé</b>.' : 'Pas encore de programme.') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+        + '<button class="backup-btn-copy" onclick="planGenerateAsk()">✨ Créer le programme à partir de mes tâches</button>'
+        + (Object.keys(plan.weekly).length ? '<button class="backup-btn-copy" onclick="planOn()">▶️ Réactiver</button>' : '') + '</div></div></div>';
+      el.innerHTML = out; return;
+    }
+    out += '✅ Programme actif · cette semaine : <b>' + (free ? '🌿 sans les enfants' : '👨‍👧 avec les enfants') + '</b></div></div>';
+    out += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
+      + (kids.length ? '<button class="backup-btn-copy" onclick="planToggleThisWeek()">' + (free ? '👨‍👧 Les enfants sont là cette semaine' : '🌿 Cette semaine, les enfants sont partis') + '</button>' : '')
+      + '<button class="backup-btn-copy" onclick="planGenerateAsk()">🔄 Recréer le programme</button>'
+      + '<button class="backup-btn-copy" onclick="planOff()">⏸️ Désactiver</button></div></div></div>';
+    // ── Semaine type ──
+    var m = PLAN_VIEW_MODE;
+    out += '<div class="hub-group-divider"><span>📆 Semaine type</span></div>';
+    out += '<div class="implication-tabs"><button class="implication-tab' + (m === 'a' ? ' active' : '') + '" onclick="planSetViewMode(\'a\')"><span>👨‍👧 Avec les enfants</span></button><button class="implication-tab' + (m === 's' ? ' active' : '') + '" onclick="planSetViewMode(\'s\')"><span>🌿 Sans les enfants</span></button></div>';
+    var dayOpts = [[0, 'Pas de jour fixe']].concat([1, 2, 3, 4, 5, 6, 7].map(function(d) { return [d, PLAN_DAYS[d]]; }));
+    var byDay = { 0: [] }; for (var d = 1; d <= 7; d++) byDay[d] = [];
+    var unplanned = [];
+    (all.weekly || []).forEach(function(task) {
+      var pl = plan.weekly[task.id], day = pl ? (pl[m] || 0) : 0;
+      (byDay[day] || byDay[0]).push(task);
+    });
+    for (var di = 1; di <= 7; di++) {
+      var list = byDay[di], pts = list.reduce(function(s, x) { return s + (x.pts || 0); }, 0);
+      out += '<div class="cat-block"><div class="cat-title">' + PLAN_DAYS[di] + (list.length ? ' <span style="font-weight:500;color:var(--muted)">· ' + list.length + ' tâche' + (list.length > 1 ? 's' : '') + ' · ⭐ ' + pts + '</span>' : '') + '</div>';
+      if (!list.length) out += '<div class="today-empty" style="padding:6px 0">Rien de prévu.</div>';
+      list.forEach(function(task) {
+        out += '<div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + esc(task.text) + ' <span class="pts-badge">⭐ ' + (task.pts || 0) + '</span>' + (task.repeat > 1 ? ' <span class="repeat-badge">🔁 x' + task.repeat + '/semaine</span>' : '') + '</div>'
+          + planSelectHtml(dayOpts, di, 'planSetWeekly(' + jsAttr(task.id) + ',' + jsAttr(m) + ',this.value)') + '</div></div>';
+      });
+      out += '</div>';
+    }
+    if (byDay[0].length) {
+      out += '<div class="cat-block"><div class="cat-title">Sans jour fixe</div>';
+      byDay[0].forEach(function(task) {
+        out += '<div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + esc(task.text) + '</div>' + planSelectHtml(dayOpts, 0, 'planSetWeekly(' + jsAttr(task.id) + ',' + jsAttr(m) + ',this.value)') + '</div></div>';
+      });
+      out += '</div>';
+    }
+    // ── Mensuel ──
+    out += '<div class="hub-group-divider"><span>🗓️ Tâches du mois</span></div>';
+    var wOpts = [[0, 'Pas de date']].concat([1, 2, 3, 4].map(function(w) { return [w, 'Semaine ' + w]; }));
+    var dOpts2 = [[0, '—']].concat([1, 2, 3, 4, 5, 6, 7].map(function(d) { return [d, PLAN_DAYS[d]]; }));
+    var td = todayISO();
+    var wkLabels = ['du 1 au 7', 'du 8 au 14', 'du 15 au 21', 'du 22 au 28'];
+    for (var w = 1; w <= 4; w++) {
+      var ml = (all.monthly || []).filter(function(task) { var pl = plan.monthly[task.id]; return pl && pl.w === w; });
+      out += '<div class="cat-block"><div class="cat-title">Semaine ' + w + ' du mois <span style="font-weight:500;color:var(--muted)">· ' + wkLabels[w - 1] + (ml.length ? ' · ⭐ ' + ml.reduce(function(s, x) { return s + (x.pts || 0); }, 0) : '') + '</span></div>';
+      if (!ml.length) out += '<div class="today-empty" style="padding:6px 0">Rien de prévu.</div>';
+      ml.sort(function(x, y) { return plan.monthly[x.id].d - plan.monthly[y.id].d; }).forEach(function(task) {
+        var pl = plan.monthly[task.id], nd = planMonthlyDate(pl, td);
+        out += '<div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + esc(task.text) + ' <span class="pts-badge">⭐ ' + (task.pts || 0) + '</span>' + (nd ? ' <span class="repeat-badge">' + formatDDMM(nd) + '</span>' : '') + '</div>'
+          + planSelectHtml(wOpts, pl.w, 'planSetMonthly(' + jsAttr(task.id) + ',\'w\',this.value)') + planSelectHtml(dOpts2, pl.d, 'planSetMonthly(' + jsAttr(task.id) + ',\'d\',this.value)') + '</div></div>';
+      });
+      out += '</div>';
+    }
+    var nomonth = (all.monthly || []).filter(function(task) { var pl = plan.monthly[task.id]; return !pl || !pl.w || !pl.d; });
+    if (nomonth.length) {
+      out += '<div class="cat-block"><div class="cat-title">Sans date fixe</div>';
+      nomonth.forEach(function(task) { out += '<div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + esc(task.text) + '</div>' + planSelectHtml(wOpts, 0, 'planSetMonthly(' + jsAttr(task.id) + ',\'w\',this.value)') + planSelectHtml(dOpts2, 0, 'planSetMonthly(' + jsAttr(task.id) + ',\'d\',this.value)') + '</div></div>'; });
+      out += '</div>';
+    }
+    out += '<p class="points-note">Une tâche ajoutée plus tard n\'a pas de jour fixe tant que tu ne lui en donnes pas un ici (ou que tu recrées le programme).</p>';
+    el.innerHTML = out;
+  }
+
   // Prochaine échéance pour UNE personne, calculée à partir de la dernière fois où ELLE a fait la tâche
   function computeNextDue(period, taskId, personId) {
     var lastDone = (getLastDoneAll()[taskId] || {})[personId];
@@ -3410,6 +3839,8 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
 
   // Vrai si au moins une personne a une échéance calculée tombant aujourd'hui
   function isDueToday(period, taskId) {
+    var planned = planDueToday(period, taskId);
+    if (planned !== null) return planned;
     var taskDates = getLastDoneAll()[taskId] || {};
     return Object.keys(taskDates).some(function(personId) {
       var next = computeNextDue(period, taskId, personId);
@@ -3679,7 +4110,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     var arr = checks[taskId] || [];
     var lastDoneAll = getLastDoneAll();
     selected.forEach(function(personId) {
-      if (arr.indexOf(personId) === -1) arr.push(personId);
+      if (arr.indexOf(personId) === -1) { arr.push(personId); logDone(period, taskId, personId); }
       setSharedCredit(period, taskId, personId, share);
       if (period === 'weekly' || period === 'monthly') {
         if (!lastDoneAll[taskId]) lastDoneAll[taskId] = {};
@@ -3696,10 +4127,20 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
 
   function pad2(n) { return String(n).padStart(2,'0'); }
 
+  function argentWeekKey(d) {
+    d = d || new Date();
+    var back = (d.getDay() - 5 + 7) % 7; // 5 = vendredi
+    var s = new Date(d.getFullYear(), d.getMonth(), d.getDate() - back);
+    return 'F' + s.getFullYear() + '-' + pad2(s.getMonth() + 1) + '-' + pad2(s.getDate());
+  }
+
   function periodKey(period) {
     var d = new Date();
     if (period === 'argent') {
-      return 'permanent'; // pas de remise à zéro automatique : ces tâches restent cochées jusqu'à ce qu'on les décoche
+      // "Ça rapporte" : les cases se vident chaque semaine (semaine du vendredi au jeudi). Rien n'est
+      // supprimé : chaque semaine garde sa propre clé, et l'ancienne clé 'permanent' (d'avant ce
+      // changement) reste intacte dans les données — voir histoCollect() pour l'historique.
+      return argentWeekKey(d);
     }
     if (period === 'daily') {
       // Route par la date "active" (aujourd'hui, sauf retour en arrière volontaire — voir
@@ -3781,7 +4222,8 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     checks[taskId] = arr;
     saveChecksFor(period, checks);
     if (period === 'argent') {
-      subtractArgentMonthPoints(personId, taskId);
+      var removedLog = unlogDone(period, taskId, personId, false);
+      subtractArgentMonthPoints(personId, taskId, removedLog && removedLog.d ? removedLog.d.slice(0, 7) : null);
     }
     refreshAffected(period);
   }
@@ -3799,6 +4241,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
       arr.push(personId);
       checks[taskId] = arr;
       saveChecksFor(period, checks);
+      logDone(period, taskId, personId);
       addArgentMonthPoints(personId, taskId);
       refreshAffected(period);
       return;
@@ -3826,6 +4269,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
 
     checks[taskId] = arr;
     saveChecksFor(period, checks);
+    if (isNowChecking) logDone(period, taskId, personId); else unlogDone(period, taskId, personId, true);
     // Un clic normal sur le rond (hors mode "partage") remet toujours au plein tarif, même si
     // cette personne avait été créditée d'une part réduite lors d'un précédent partage.
     clearSharedCredit(period, taskId, personId);
@@ -3941,6 +4385,8 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
 
   function resetPeriod(period) {
     saveChecksFor(period, {});
+    // "Ça rapporte" : l'argent déjà crédité reste crédité, donc ses dates restent dans l'historique.
+    if (period !== 'argent') unlogPeriod(period);
     refreshAffected(period);
   }
 
@@ -4042,7 +4488,9 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
       if (input) { input.focus(); input.select(); }
       return;
     }
+    safetyTake('avant-reinitialisation-des-points', { force: true });
     saveChecksAll({});
+    saveDoneLog({ start: null, list: [] });
     saveMalusAll([]);
     savePocketLedger({});
     saveForcedWeeksAll({});
@@ -4149,6 +4597,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     if (!raw) { if (status) status.textContent = "⚠️ Colle d'abord une sauvegarde copiée."; return; }
     var incoming;
     try { incoming = JSON.parse(raw); } catch (e) { if (status) status.textContent = "⚠️ Le texte collé n'est pas reconnu — vérifie qu'il a bien été copié en entier."; return; }
+    safetyTake('avant-restauration-de-sauvegarde', { force: true });
     SYNC_KEYS.forEach(function(k) {
       if (Object.prototype.hasOwnProperty.call(incoming, k) && incoming[k] != null) {
         localStorage.setItem(k, incoming[k]);
@@ -4611,6 +5060,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     var badge = (t.pts != null) ? ' <span class="pts-badge">⭐ ' + t.pts + '</span>' : '';
     var repeatSuffix = REPEAT_SUFFIX[period] || '';
     var repeatBadge = taskRepeat > 1 ? ' <span class="repeat-badge">🔁 x' + taskRepeat + repeatSuffix + '</span>' : '';
+    if (period === 'weekly' || period === 'monthly') repeatBadge += planBadgeHtml(period, t.id);
     if (period === 'argent') repeatBadge = ' <span class="repeat-badge">🔁 illimité</span>';
     var taskDates = (period === 'weekly' || period === 'monthly') ? (getLastDoneAll()[t.id] || {}) : null;
     var dateChips = '';
@@ -4863,7 +5313,18 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     setTaskSearch(period, '');
   }
 
+  function updateArgentWeekNote() {
+    var el = document.getElementById('argent-week-note');
+    if (!el) return;
+    var fk = argentWeekKey(); // 'FYYYY-MM-DD'
+    var start = new Date(+fk.slice(1, 5), +fk.slice(6, 8) - 1, +fk.slice(9, 11));
+    var end = new Date(start.getFullYear(), start.getMonth(), start.getDate() + 6);
+    function dm(d) { return pad2(d.getDate()) + '/' + pad2(d.getMonth() + 1); }
+    el.innerHTML = '🔄 Semaine du vendredi <b>' + dm(start) + '</b> au jeudi <b>' + dm(end) + '</b> : on peut cliquer autant de fois que nécessaire. Les cases se vident toutes seules chaque vendredi — chaque clic reste dans <b>📅 Historique des tâches</b>.';
+  }
+
   function renderSection(period) {
+    if (period === 'argent') updateArgentWeekNote();
     var tasks = getTasksAll()[period] || [];
     var checks = getChecksFor(period);
     var listEl = document.getElementById('list-' + period);
@@ -5996,13 +6457,18 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
         if (pid === personId) items.push({ period: 'exceptional', name: nameMap[taskId] || '(tâche supprimée)', pts: (ptsMap[taskId] != null ? ptsMap[taskId] : 1), sortKey: ym, dateLabel: 'exceptionnelle, ce mois-ci' });
       });
     });
-    // checksAll.argent est structuré comme les autres périodes ({ clé -> { taskId: [personIds] } }),
-    // sauf que sa seule clé possible est toujours 'permanent' (ces tâches ne se réinitialisent jamais —
-    // voir periodKey('argent')) : il faut donc bien descendre d'un niveau avant de lire les taskId.
+    // "Ça rapporte" : cases par semaine (vendredi → jeudi) + dates du journal, pour ce mois.
+    var argentHist = histoCollect(personId, ym).argent;
+    Object.keys(argentHist).forEach(function(taskId) {
+      argentHist[taskId].forEach(function(e) {
+        for (var i = 0; i < e.n; i++) items.push({ period: 'argent', name: nameMap[taskId] || '(tâche supprimée)', pts: (ptsMap[taskId] != null ? ptsMap[taskId] : 1), sortKey: e.sort, dateLabel: e.label });
+      });
+    });
+    // Anciennes cases (d'avant le passage à la remise à zéro hebdomadaire) : conservées telles quelles.
     var argentData = (checksAll.argent && checksAll.argent.permanent) || {};
     Object.keys(argentData).forEach(function(taskId) {
       (argentData[taskId] || []).forEach(function(pid) {
-        if (pid === personId) items.push({ period: 'argent', name: nameMap[taskId] || '(tâche supprimée)', pts: (ptsMap[taskId] != null ? ptsMap[taskId] : 1), sortKey: 'zzz', dateLabel: 'coché en permanence' });
+        if (pid === personId) items.push({ period: 'argent', name: nameMap[taskId] || '(tâche supprimée)', pts: (ptsMap[taskId] != null ? ptsMap[taskId] : 1), sortKey: 'zzz', dateLabel: 'avant le changement (sans date)' });
       });
     });
     items.sort(function(a, b) { return a.sortKey < b.sortKey ? 1 : (a.sortKey > b.sortKey ? -1 : 0); });
@@ -6735,16 +7201,254 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     renderPocketGauges();
   }
 
+  // ── 📅 Journal des dates + écran "Historique des tâches" ──
+  function getDoneLog() {
+    try { var d = JSON.parse(localStorage.getItem(DONELOG_KEY) || 'null'); if (d && Array.isArray(d.list)) return d; } catch(e) {}
+    return { start: null, list: [] };
+  }
+  function saveDoneLog(d) { localStorage.setItem(DONELOG_KEY, JSON.stringify(d)); scheduleSyncPublish(); }
+  function logDone(period, taskId, personId) {
+    if (period === 'daily') return;
+    var d = getDoneLog();
+    if (!d.start) d.start = todayISO();
+    d.list.push({ id: 'l' + Date.now() + Math.random().toString(36).slice(2, 6), p: personId, t: taskId, per: period, k: periodKey(period), d: todayISO() });
+    saveDoneLog(d);
+  }
+  // Retire la dernière ligne (ou toutes si all) de cette tâche/personne pour la période EN COURS.
+  function unlogDone(period, taskId, personId, all) {
+    if (period === 'daily') return null;
+    var d = getDoneLog(), key = periodKey(period), removed = null;
+    for (var i = d.list.length - 1; i >= 0; i--) {
+      var e = d.list[i];
+      if (e.per === period && e.k === key && e.t === taskId && e.p === personId) {
+        if (!removed) removed = e;
+        d.list.splice(i, 1);
+        if (!all) break;
+      }
+    }
+    if (removed) saveDoneLog(d);
+    return removed;
+  }
+  function unlogPeriod(period) {
+    if (period === 'daily') return;
+    var d = getDoneLog(), key = periodKey(period), n = d.list.length;
+    d.list = d.list.filter(function(e) { return !(e.per === period && e.k === key); });
+    if (d.list.length !== n) saveDoneLog(d);
+  }
+
+  function histoKeyMonth(period, key) {
+    if (period === 'weekly') return monthOfWeekKey(key);
+    if (period === 'argent') return key.slice(1, 8); // 'FYYYY-MM-DD' -> 'YYYY-MM'
+    return key; // monthly / exceptional : déjà 'YYYY-MM'
+  }
+
+  // Tout ce que cette personne a fait ce mois-là, par période puis par tâche :
+  // { daily: { taskId: [{label, sort, n}] }, weekly: …, monthly: …, exceptional: …, argent: … }
+  function histoCollect(personId, ym) {
+    var checksAll = getChecksAll(), log = getDoneLog();
+    var res = { daily: {}, weekly: {}, monthly: {}, exceptional: {}, argent: {} };
+    function add(per, taskId, label, sort, n) { (res[per][taskId] = res[per][taskId] || []).push({ label: label, sort: sort, n: n || 1 }); }
+    var dailyData = checksAll.daily || {};
+    Object.keys(dailyData).forEach(function(dk) {
+      if (dk.indexOf(ym) !== 0) return;
+      var by = dailyData[dk] || {};
+      Object.keys(by).forEach(function(tid) {
+        var n = countInArray(by[tid] || [], personId);
+        if (n) add('daily', tid, formatDDMM(dk), dk, n);
+      });
+    });
+    var loggedByKey = {};
+    log.list.forEach(function(e) {
+      if (e.p !== personId || !res[e.per]) return;
+      var kk = e.per + '|' + e.k + '|' + e.t;
+      loggedByKey[kk] = (loggedByKey[kk] || 0) + 1;
+      if (e.d && e.d.indexOf(ym) === 0) add(e.per, e.t, formatDDMM(e.d), e.d, 1);
+    });
+    ['weekly', 'monthly', 'exceptional', 'argent'].forEach(function(per) {
+      var data = checksAll[per] || {};
+      Object.keys(data).forEach(function(key) {
+        if (per === 'argent' && key === 'permanent') return; // anciennes cases : traitées à part
+        if (histoKeyMonth(per, key) !== ym) return;
+        var by = data[key] || {};
+        Object.keys(by).forEach(function(tid) {
+          var derived = countInArray(by[tid] || [], personId);
+          var extra = derived - (loggedByKey[per + '|' + key + '|' + tid] || 0);
+          if (extra > 0) {
+            var label = per === 'weekly' ? ('semaine ' + key.slice(key.indexOf('W') + 1)) : per === 'argent' ? ('semaine du ' + formatDDMM(key.slice(1))) : 'ce mois-ci';
+            add(per, tid, label + ' (date non notée)', '0' + key, extra);
+          }
+        });
+      });
+    });
+    return res;
+  }
+
+  var HISTO_PERSON = null;
+  var HISTO_YM = null;
+  var HISTO_LABELS = { daily: '☀️ Quotidien', weekly: '🗓️ Hebdo', monthly: '📆 Mensuel', exceptional: '✨ Exceptionnelles', argent: '💰 Ça rapporte' };
+  var MOIS_FR = ['janvier','février','mars','avril','mai','juin','juillet','août','septembre','octobre','novembre','décembre'];
+  function histoShiftMonth(delta) {
+    var cur = HISTO_YM || periodKey('monthly');
+    var y = +cur.slice(0, 4), m = +cur.slice(5, 7) - 1 + delta;
+    var dt = new Date(y, m, 1);
+    HISTO_YM = dt.getFullYear() + '-' + pad2(dt.getMonth() + 1);
+    renderHistoView();
+  }
+  function histoPick(personId) { HISTO_PERSON = personId; renderHistoView(); }
+
+  function histoChipsHtml(entries, color) {
+    var merged = {};
+    entries.forEach(function(e) { var k = e.sort + '|' + e.label; if (!merged[k]) merged[k] = { sort: e.sort, label: e.label, n: 0 }; merged[k].n += e.n; });
+    return Object.keys(merged).map(function(k) { return merged[k]; })
+      .sort(function(a, b) { return a.sort < b.sort ? -1 : (a.sort > b.sort ? 1 : 0); })
+      .map(function(e) { return '<span class="date-chip" style="--dot-color:' + color + '">' + esc(e.label) + (e.n > 1 ? ' ×' + e.n : '') + '</span>'; }).join('');
+  }
+
+  function renderHistoView() {
+    var el = document.getElementById('view-histo');
+    if (!el || !PERSONS || !PERSONS.length) return;
+    if (!HISTO_PERSON || !PERSONS.some(function(p) { return p.id === HISTO_PERSON; })) {
+      var firstKid = PERSONS.filter(function(p) { return p.role === 'enfant'; })[0];
+      HISTO_PERSON = (firstKid || PERSONS[0]).id;
+    }
+    var ym = HISTO_YM || periodKey('monthly');
+    HISTO_YM = ym;
+    var person = PERSONS.filter(function(p) { return p.id === HISTO_PERSON; })[0];
+    var tasksAll = getTasksAll();
+    var data = histoCollect(person.id, ym);
+    var nameMap = {};
+    ['daily', 'weekly', 'monthly', 'exceptional', 'argent'].forEach(function(per) { (tasksAll[per] || []).forEach(function(t) { nameMap[t.id] = t.text; }); });
+    var total = 0;
+    ['daily', 'weekly', 'monthly', 'exceptional', 'argent'].forEach(function(per) {
+      Object.keys(data[per]).forEach(function(tid) { data[per][tid].forEach(function(e) { total += e.n; }); });
+    });
+
+    var out = '<div class="back-link" onclick="showView(\'taches\', document.querySelector(\'nav.bottom button[data-view=taches]\'))">‹ Tâches</div>';
+    out += '<div class="section-head"><h2>📅 Historique des tâches</h2></div>';
+    out += '<div class="histo-people">' + PERSONS.map(function(p) {
+      var on = p.id === person.id;
+      return '<button type="button" class="histo-person' + (on ? ' on' : '') + '" style="--dot-color:' + p.color + '" onclick="histoPick(' + jsAttr(p.id) + ')">' + esc(p.label) + '</button>';
+    }).join('') + '</div>';
+    out += '<div class="histo-month"><button type="button" onclick="histoShiftMonth(-1)">‹</button><span>' + MOIS_FR[+ym.slice(5, 7) - 1] + ' ' + ym.slice(0, 4) + '</span><button type="button" onclick="histoShiftMonth(1)">›</button></div>';
+    out += '<p class="points-note" style="text-align:center;margin-top:0;"><b>' + esc(person.label) + '</b> : ' + total + ' tâche' + (total > 1 ? 's' : '') + ' cochée' + (total > 1 ? 's' : '') + ' ce mois-là.</p>';
+
+    ['daily', 'weekly', 'monthly', 'exceptional', 'argent'].forEach(function(per) {
+      var tasks = (tasksAll[per] || []).filter(function(t) { return taskAssignees(t).some(function(p) { return p.id === person.id; }); });
+      var doneIds = Object.keys(data[per]);
+      var knownIds = tasks.map(function(t) { return t.id; });
+      var orphanIds = doneIds.filter(function(id) { return knownIds.indexOf(id) === -1; });
+      var doneTasks = tasks.filter(function(t) { return doneIds.indexOf(t.id) !== -1; });
+      var notDone = tasks.filter(function(t) { return doneIds.indexOf(t.id) === -1; });
+      if (!tasks.length && !orphanIds.length) return;
+      out += '<div class="cat-block"><div class="cat-title">' + HISTO_LABELS[per] + ' (' + doneTasks.length + ' / ' + tasks.length + ')</div>';
+      function row(id, name) {
+        var entries = data[per][id];
+        var n = entries.reduce(function(a, e) { return a + e.n; }, 0);
+        return '<div class="task-card histo-row" style="cursor:default;"><div class="task-row-top"><div class="task-text">' + esc(name) + ' <span class="pts-badge">' + n + ' fois</span></div></div><div class="date-chips">' + histoChipsHtml(entries, person.color) + '</div></div>';
+      }
+      doneTasks.forEach(function(t) { out += row(t.id, t.text); });
+      orphanIds.forEach(function(id) { out += row(id, nameMap[id] || '(tâche supprimée)'); });
+      if (notDone.length) {
+        out += '<details class="histo-notdone"><summary>Pas faites ce mois-là (' + notDone.length + ')</summary>' + notDone.map(function(t) { return esc(t.text); }).join(' · ') + '</details>';
+      }
+      out += '</div>';
+    });
+
+    // Anciennes cases "Ça rapporte" (d'avant la remise à zéro hebdomadaire) : pas de date connue.
+    var legacy = (getChecksAll().argent || {}).permanent || {};
+    var legacyRows = Object.keys(legacy).map(function(tid) { return { id: tid, n: countInArray(legacy[tid] || [], person.id) }; }).filter(function(r) { return r.n > 0; });
+    if (legacyRows.length) {
+      out += '<div class="cat-block"><div class="cat-title">💰 Ça rapporte — avant le changement (sans date)</div>';
+      legacyRows.forEach(function(r) {
+        out += '<div class="task-card histo-row" style="cursor:default;"><div class="task-row-top"><div class="task-text">' + esc(nameMap[r.id] || '(tâche supprimée)') + ' <span class="pts-badge">' + r.n + ' fois</span></div></div></div>';
+      });
+      out += '</div>';
+    }
+    el.innerHTML = out;
+  }
+
+  // ── 🛡️ Écran de restauration des instantanés ──
+  var SAFETY_REASON_LABELS = {
+    'ouverture': 'Ouverture de l\'appli', 'conflit-distant': 'Conflit — version du cloud', 'conflit-local': 'Conflit — version de cet appareil',
+    'remplacee-par-un-autre-appareil': 'Valeur remplacée par un autre appareil', 'avant-reinitialisation-des-points': 'Avant « Réinitialiser tous les points »',
+    'avant-annulation-de-repartition': 'Avant une annulation de répartition', 'avant-annulation-de-remise': 'Avant une annulation de remise',
+    'avant-restauration-de-sauvegarde': 'Avant une restauration de sauvegarde', 'avant-restauration-d-un-instantane': 'Avant une restauration d\'instantané'
+  };
+  function safetyUiStatus(t) { var el = document.getElementById('safetyStatus'); if (el) el.textContent = t; }
+  function safetyUiLoadDays() {
+    if (!fbDB) { safetyUiStatus('⚠️ Cloud indisponible pour l\'instant.'); return; }
+    safetyUiStatus('Chargement…');
+    fbDB.ref(fbSafetyIndexPath()).once('value').then(function(snap) {
+      var days = Object.keys(snap.val() || {}).sort().reverse().slice(0, 30);
+      var el = document.getElementById('safetyDays');
+      if (!days.length) { el.innerHTML = ''; safetyUiStatus('Aucun instantané pour l\'instant : le premier sera pris à la prochaine ouverture.'); return; }
+      safetyUiStatus('');
+      el.innerHTML = '<div style="display:flex;flex-wrap:wrap;gap:6px;">' + days.map(function(d) {
+        return '<button type="button" class="backup-btn-merge" style="padding:6px 10px;font-size:12px;" onclick="safetyUiLoadDay(' + jsAttr(d) + ')">' + formatDDMM(d) + '</button>';
+      }).join('') + '</div>';
+    }).catch(function(e) { safetyUiStatus('❌ ' + (e && e.message ? e.message : 'erreur')); });
+  }
+  function safetyWalletSummary(rec) {
+    try {
+      var w = JSON.parse((rec.d || {})[safeKeyName(WALLET_KEY)] || '{}') || {};
+      var parts = [];
+      PERSONS.forEach(function(p) {
+        var x = w[p.id];
+        if (x && (x.loisirs || x.epargne)) parts.push(p.label + ' : 🎈 ' + (x.loisirs || 0).toFixed(2) + ' € · 🐷 ' + (x.epargne || 0).toFixed(2) + ' €');
+      });
+      return parts.join(' — ');
+    } catch (e) { return ''; }
+  }
+  var SAFETY_DAY_CACHE = {};
+  function safetyUiLoadDay(day) {
+    safetyUiStatus('Chargement…');
+    fbDB.ref(fbSafetyPath() + '/' + day).once('value').then(function(snap) {
+      var all = snap.val() || {};
+      SAFETY_DAY_CACHE = {};
+      var items = Object.keys(all).map(function(id) { SAFETY_DAY_CACHE[id] = all[id]; return { id: id, rec: all[id] }; }).sort(function(a, b) { return (b.rec.t || 0) - (a.rec.t || 0); });
+      var out = '';
+      items.forEach(function(it) {
+        var r = it.rec, d = new Date(r.t || 0), hm = pad2(d.getHours()) + ':' + pad2(d.getMinutes());
+        var sum = safetyWalletSummary(r);
+        out += '<div style="background:#fff;border:1px solid #E2DCC8;border-radius:10px;padding:10px 12px;margin-top:6px;font-size:12.5px;line-height:1.5;">' +
+          '<b>' + hm + '</b> — ' + esc(SAFETY_REASON_LABELS[r.reason] || r.reason || '') + (r.single ? ' <i>(une seule donnée)</i>' : '') + '<br>' +
+          (sum ? '<span style="color:#555;">' + esc(sum) + '</span><br>' : '') +
+          '<button type="button" class="backup-btn-merge" style="margin:6px 6px 0 0;padding:5px 9px;font-size:12px;" onclick="safetyUiRestore(' + jsAttr(it.id) + ',\'argent\')">↩️ Restaurer cagnottes, remises & dettes</button>' +
+          '<button type="button" class="backup-btn-merge" style="margin-top:6px;padding:5px 9px;font-size:12px;" onclick="safetyUiRestore(' + jsAttr(it.id) + ',\'cases\')">↩️ Restaurer cases & points</button></div>';
+      });
+      document.getElementById('safetyList').innerHTML = out || '<p class="backup-hint">Rien ce jour-là.</p>';
+      document.getElementById('safetyRestoreZone').style.display = out ? 'block' : 'none';
+      safetyUiStatus('');
+    }).catch(function(e) { safetyUiStatus('❌ ' + (e && e.message ? e.message : 'erreur')); });
+  }
+  function safetyUiRestore(id, group) {
+    var codeEl = document.getElementById('safetyRestoreCode'), errEl = document.getElementById('safetyRestoreError');
+    if (!codeEl || codeEl.value.trim() !== RESET_CONFIRM_CODE) { if (errEl) errEl.style.display = 'block'; if (codeEl) { codeEl.focus(); codeEl.select(); } return; }
+    if (errEl) errEl.style.display = 'none';
+    var rec = SAFETY_DAY_CACHE[id];
+    if (!rec || !rec.d) return;
+    safetyTake('avant-restauration-d-un-instantane', { force: true });
+    var n = 0;
+    (SAFETY_GROUPS[group] || []).forEach(function(k) {
+      var v = rec.d[safeKeyName(k)];
+      if (v != null) { try { localStorage.setItem(k, v); n++; } catch (e) {} }
+    });
+    scheduleSyncPublish();
+    reloadAllFromStorage();
+    safetyUiStatus(n ? '✅ Restauré (' + n + ' donnée' + (n > 1 ? 's' : '') + '). Une copie de l\'état d\'avant a été gardée.' : 'ℹ️ Cet instantané ne contient rien de ce type.');
+  }
+
   // ── Navigation ──
   // Comme sur Éclore : la barre du bas ne porte que 4 onglets (Aujourd'hui / Tâches / Famille /
   // Courses). "Tâches" et "Famille" sont des hubs — des écrans avec des cartes cliquables qui
   // ouvrent les vrais sous-écrans (Quotidien, Hebdo, Mensuel, Ça rapporte, Bonus, Malus, Implication,
   // Mes accès). NAV_PARENT dit, pour un sous-écran donné, quel onglet du bas doit rester actif.
   var NAV_PARENT = {
-    daily: 'taches', weekly: 'taches', monthly: 'taches', exceptional: 'taches', argent: 'taches',
+    daily: 'taches', weekly: 'taches', monthly: 'taches', exceptional: 'taches', argent: 'taches', histo: 'taches', planning: 'taches',
     bonus: 'famille', malus: 'famille', points: 'famille', acces: 'famille', rappel: 'famille', fiches: 'famille', tuto: 'famille', journee: 'famille'
   };
   var HUB_ICONS_MH = {
+    planning: { bg: '#E7EEE1', fg: '#3F5D46', svg: '<span style="font-size:20px;line-height:1">🗓️</span>' },
     journee: { bg: '#FBE9DF', fg: '#B96A46', svg: '<span style="font-size:20px;line-height:1">🌈</span>' },
     daily: { bg: '#F7E4D8', fg: '#8A4A21', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg>' },
     weekly: { bg: '#E3ECF2', fg: '#3D5A73', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/><path d="M7.5 13.5h3M7.5 16.5h3M13.5 13.5h3"/></svg>' },
@@ -6757,6 +7461,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     acces: { bg: '#E7EEE1', fg: '#3F5D46', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="8" cy="15" r="4"/><path d="M11 12l9-9M17 6l3 3M14 9l2 2"/></svg>' },
     rappel: { bg: '#FBEEE7', fg: '#B96A46', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><path d="M12 3.5c-.9 0-1.6.7-1.6 1.6v.6C7.9 6.4 6 8.9 6 12v3.5L4.3 17.2c-.5.5-.1 1.3.6 1.3h14.2c.7 0 1.1-.8.6-1.3L18 15.5V12c0-3.1-1.9-5.6-4.4-6.3v-.6c0-.9-.7-1.6-1.6-1.6Z"/><path d="M9.5 19.5a2.5 2.5 0 0 0 5 0"/></svg>' },
     fiches: { bg: '#EDE3F0', fg: '#6B4A82', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="8.3" r="3.3"/><path d="M5.5 20c0-3.6 2.9-6.3 6.5-6.3s6.5 2.7 6.5 6.3"/></svg>' },
+    histo: { bg: '#E3ECF2', fg: '#3D5A73', svg: '<span style="font-size:20px;line-height:1">📅</span>' },
     tuto: { bg: '#E3ECF2', fg: '#3D5A73', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><circle cx="12" cy="12" r="9"/><path d="M9.3 9.3c0-1.5 1.2-2.6 2.7-2.6s2.7.9 2.7 2.2c0 2.4-2.7 2.1-2.7 4.3"/><circle cx="12" cy="16.7" r=".35" fill="currentColor"/></svg>' }
   };
   function hubItemHtmlMH(view, title, sub) {
@@ -6771,12 +7476,15 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     if (!el) return;
     el.innerHTML =
       '<div class="section-head"><h2>📋 Tâches ménagères</h2></div>' +
+      hubItemHtmlMH('planning', 'Programme de la semaine', 'Quelle tâche, quel jour — hebdo et mensuel') +
       hubItemHtmlMH('daily', 'Quotidien', 'Les tâches de tous les jours') +
       hubItemHtmlMH('weekly', 'Hebdo', 'Une fois par semaine') +
       hubItemHtmlMH('monthly', 'Mensuel', 'Une fois par mois') +
       hubItemHtmlMH('exceptional', 'Exceptionnelles', 'Un imprévu, ponctuellement') +
       '<div class="hub-group-divider"><span>💰 Ça rapporte</span></div>' +
-      hubItemHtmlMH('argent', 'Ça rapporte', 'Argent de poche & salaire, à part');
+      hubItemHtmlMH('argent', 'Ça rapporte', 'Argent de poche & salaire, à part') +
+      '<div class="hub-group-divider"><span>📅 Suivi</span></div>' +
+      hubItemHtmlMH('histo', 'Historique des tâches', 'Qui a fait quoi, et quand');
   }
   function renderFamilleHub() {
     var el = document.getElementById('view-famille');
@@ -6806,6 +7514,7 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     out += '<div class="cat-block"><div class="cat-title">☀️ Aujourd\'hui</div><div class="task-card" style="cursor:default;"><div class="task-row-top"><div class="task-text">La page d\'accueil : d\'abord « 🎯 Vos impératifs de la journée » (les tâches perso de chaque enfant qui comptent aujourd\'hui), puis les tâches quotidiennes, plus celles de la semaine/du mois qui tombent aujourd\'hui (ou qu\'on a épinglées 📌), toutes réunies au même endroit.</div></div></div></div>';
 
     out += '<div class="cat-block"><div class="cat-title">📋 Tâches ménagères</div><div class="task-card" style="cursor:default;"><div class="task-row-top"><div class="task-text">Quotidien, Hebdo, Mensuel, Exceptionnelles — chaque tâche vaut des points ⭐. On coche le rond de la personne qui l\'a faite. Une tâche peut se répéter plusieurs fois (🔁), se faire à plusieurs en partageant les points (👥), ou recevoir un malus ⚠️ si elle n\'a pas été faite. « 💰 Ça rapporte » est à part : ça alimente le salaire, pas l\'argent de poche, et ça se coche sans limite.</div></div></div></div>';
+    out += '<div class="cat-block"><div class="cat-title">🗓️ Programme de la semaine</div><div class="task-card" style="cursor:default;"><div class="task-row-top"><div class="task-text">Dans Tâches ménagères : un jour fixe pour chaque tâche hebdo (un jour quand les enfants sont là, un autre quand ils sont partis) et une semaine + un jour pour chaque tâche du mois. Un bouton crée le programme tout seul à partir de tes tâches ; tu peux ensuite changer le jour de chacune. Les tâches du jour apparaissent dans « Aujourd\'hui » et restent à faire tant qu\'elles ne sont pas cochées.</div></div></div></div>';
 
     out += '<div class="cat-block"><div class="cat-title">🧒 Fiches enfants</div><div class="task-card" style="cursor:default;"><div class="task-row-top"><div class="task-text">Une fiche par enfant : soit en créant une nouvelle tâche rien que pour lui/elle, soit en rendant perso une tâche déjà existante de Quotidien/Hebdo/Mensuel. Une tâche perso n\'apparaît que sur sa fiche, et aussi dans « 🎯 Vos impératifs de la journée » sur l\'accueil quand elle compte aujourd\'hui.</div></div></div></div>';
 
@@ -7301,6 +8010,8 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     if (view === 'fiches') renderFichesHub();
     if (view === 'journee') renderJourneeView();
     if (view === 'tuto') renderTutoViewMH();
+    if (view === 'histo') renderHistoView();
+    if (view === 'planning') renderPlanningView();
     if (view === 'acces') {
       if (ADMIN_UNLOCKED) {
         renderAccesTab();
@@ -7447,6 +8158,18 @@ window.MH_BUILD_VERSION = '2026-09-29-d';
     initAll(); // affichage immédiat depuis les données déjà en local (pas d'écran vide en attendant le réseau)
     maybeShowFamilySetup(); // nouvel espace client jamais configuré : assistant tout de suite, sans attendre le réseau
     initSync(); // puis, si dispo, on récupère l'état partagé des autres téléphones et on réaffiche si besoin
+    // 🗓️ Espace perso d'Anaïs uniquement (jamais les espaces clientes) : si aucun programme n'a encore été
+    // créé, il se crée tout seul à partir des tâches existantes, après avoir laissé le temps à la
+    // synchronisation de ramener un éventuel programme déjà fait sur un autre appareil.
+    if (!CLIENT_CODE) setTimeout(function() {
+      try {
+        if (localStorage.getItem(PLAN_KEY) !== null) return; // un programme existe déjà (ou a été désactivé) : on n'y touche pas
+        var all = getTasksAll();
+        if (!(all.weekly || []).length && !(all.monthly || []).length) return;
+        planSave(planGenerate());
+        try { renderToday(); } catch (e) {}
+      } catch (e) {}
+    }, 9000);
   });
   // Envoie tout de suite une publication en attente dès qu'on quitte/masque la page, plutôt que
   // d'attendre le délai normal de 500ms qui risquerait de ne jamais se déclencher (onglet fermé,
