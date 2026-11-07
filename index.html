@@ -1380,6 +1380,8 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
 
   <div class="view" id="view-planning"></div>
 
+  <div class="view" id="view-semaine"></div>
+
   <div class="view" id="view-taches"></div>
   <div class="view" id="view-famille"></div>
 
@@ -2038,6 +2040,8 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
   SYNC_KEYS.push(DONELOG_KEY);
   var PLAN_KEY = nsKey('mh_plan_v1'); // 🗓️ Programme de la semaine : { on, weekly:{taskId:{a:1-7,s:1-7}}, monthly:{taskId:{w:1-4,d:1-7}} }
   SYNC_KEYS.push(PLAN_KEY);
+  var TRANSFER_KEY = nsKey('mh_transferts_v1'); // 🤝 Tâches confiées à quelqu'un à une date précise : [{ id, taskId, period, text, pts, persons:[ids], date:'YYYY-MM-DD', at }]
+  SYNC_KEYS.push(TRANSFER_KEY);
 
   // ── 🛡️ PROTECTION CONTRE L'ÉCRASEMENT ───────────────────────────────────────────────────────────
   // 1) Un appareil qui n'est pas à jour ne peut plus écraser les données des autres : avant d'envoyer, on vérifie
@@ -3753,6 +3757,179 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
     return '<select onchange="' + onchange + '" style="padding:5px 6px;border:1.5px solid var(--border,#E2DCC8);border-radius:8px;font-size:12.5px;background:#fff;max-width:128px">' +
       opts.map(function(o) { return '<option value="' + o[0] + '"' + (String(o[0]) === String(cur || 0) ? ' selected' : '') + '>' + esc(o[1]) + '</option>'; }).join('') + '</select>';
   }
+
+  // ═══════════════════════════════════════════════════════════════════════════
+  // 🤝 CONFIER UNE TÂCHE À QUELQU'UN, À UNE DATE PRÉCISE + 📆 MA SEMAINE (ajouté le 06/11/2026)
+  //  · Sur chaque tâche, le bouton 🤝 confie la tâche à un ou plusieurs membres de la famille (enfants ou
+  //    toi) pour un jour précis (jour + date). La tâche elle-même (points, cases cochées) n'est JAMAIS modifiée :
+  //    la liste des tâches confiées est rangée à part (TRANSFER_KEY).
+  //  · L'enfant voit ses tâches confiées (avec jour, date et points) sur sa fiche (Famille › Fiches enfants) et
+  //    les coche comme d'habitude — ça passe par togglePerson, donc points et historique restent ceux de la maison.
+  //  · « Ma semaine » : toutes les tâches de chaque jour de la semaine (programme), à qui elles sont, avec la date.
+  // ═══════════════════════════════════════════════════════════════════════════
+  var TR_PANEL = null, TR_SEL = {}, TR_DATE = '', SEM_OFFSET = 0, SEM_ADD = null;
+  function trGet() { try { var a = JSON.parse(localStorage.getItem(TRANSFER_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function trSave(a) { localStorage.setItem(TRANSFER_KEY, JSON.stringify(a)); scheduleSyncPublish(); }
+  function trDateLabel(ds) {
+    var q = String(ds || '').split('-').map(Number); if (q.length < 3) return ds || '';
+    return PLAN_DAYS[planDow(ds)] + ' ' + q[2] + ' ' + MOIS_LABELS[q[1] - 1];
+  }
+  function trPersonLabel(id) { var p = PERSONS.filter(function(x) { return x.id === id; })[0]; return p ? p.label : id; }
+  function trPersonsLabel(ids) { return (ids || []).map(trPersonLabel).join(', '); }
+  function trForTask(taskId) {
+    var from = addDaysISO(todayISO(), -7);
+    return trGet().filter(function(x) { return x.taskId === taskId && x.date >= from; }).sort(function(a, b) { return a.date.localeCompare(b.date); });
+  }
+  function trBadgesHtml(taskId) {
+    var list = trForTask(taskId); if (!list.length) return '';
+    return '<div class="date-chips">' + list.map(function(x) {
+      return '<span class="date-chip" style="--dot-color:#B96A46">🤝 ' + esc(trPersonsLabel(x.persons)) + ' · ' + esc(trDateLabel(x.date)) +
+        ' <a href="#" onclick="trCancel(' + jsAttr(x.id) + ');return false" title="Reprendre cette tâche" style="margin-left:4px;color:inherit">✕</a></span>';
+    }).join('') + '</div>';
+  }
+  function trRefresh(period) {
+    try { if (period) refreshAffected(period); } catch (e) {}
+    var v = document.getElementById('view-semaine'); if (v && v.classList.contains('active')) renderMaSemaine();
+    var f = document.getElementById('view-fiches'); if (f && f.classList.contains('active')) renderFichesHub();
+  }
+  function trCancel(id) {
+    var a = trGet(), x = a.filter(function(y) { return y.id === id; })[0];
+    trSave(a.filter(function(y) { return y.id !== id; }));
+    trRefresh(x ? x.period : null);
+  }
+  function trDefaultDate(period, taskId) {
+    var plan = planGet(), today = todayISO(), pl = plan.on ? (period === 'weekly' ? plan.weekly : period === 'monthly' ? plan.monthly : {})[taskId] : null;
+    if (pl) {
+      var d = period === 'weekly' ? planWeeklyDate(pl, today) : planMonthlyDate(pl, today);
+      if (d && d >= today) return d;
+    }
+    return today;
+  }
+  function trTogglePanel(period, taskId, fixedDate) {
+    if (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === taskId && (TR_PANEL.fixed || '') === (fixedDate || '')) { TR_PANEL = null; trRefresh(period); return; }
+    TR_PANEL = { period: period, id: taskId, fixed: fixedDate || '' };
+    TR_SEL = {}; TR_DATE = fixedDate || trDefaultDate(period, taskId);
+    trRefresh(period);
+  }
+  function trSetDate(v) { TR_DATE = v; }
+  function trToggleSel(pid) { if (TR_SEL[pid]) delete TR_SEL[pid]; else TR_SEL[pid] = true; trRefresh(TR_PANEL ? TR_PANEL.period : null); }
+  function trPanelHtml(period, t) {
+    var today = todayISO(), opts = '';
+    if (TR_PANEL.fixed) opts = '<option value="' + TR_PANEL.fixed + '" selected>' + esc(trDateLabel(TR_PANEL.fixed)) + '</option>';
+    else for (var i = 0; i < 21; i++) {
+      var d = addDaysISO(today, i);
+      opts += '<option value="' + d + '"' + (d === TR_DATE ? ' selected' : '') + '>' + esc(trDateLabel(d)) + (i === 0 ? ' (aujourd\'hui)' : '') + '</option>';
+    }
+    var out = '<div class="edit-panel"><div class="edit-date-label">🤝 Confier « ' + esc(t.text) + ' » à :</div>';
+    out += '<div class="dots-row">' + PERSONS.map(function(p) {
+      var on = !!TR_SEL[p.id];
+      return '<div class="person-dot ' + (on ? 'on' : 'off') + '" style="--dot-color:' + p.color + '" onclick="trToggleSel(' + jsAttr(p.id) + ')"><span class="circ">' + (on ? '✓' : p.init) + '</span>' + esc(p.label) + '</div>';
+    }).join('') + '</div>';
+    out += '<div class="edit-panel-row"><label class="edit-date-label">Le</label><select id="tr-date" onchange="trSetDate(this.value)">' + opts + '</select></div>';
+    out += '<button class="edit-save" onclick="trConfirm()">✅ Confier cette tâche</button></div>';
+    return out;
+  }
+  function trConfirm() {
+    if (!TR_PANEL) return;
+    var ids = Object.keys(TR_SEL).filter(function(k) { return TR_SEL[k]; });
+    if (!ids.length) { alert('Coche au moins une personne.'); return; }
+    var sel = document.getElementById('tr-date'); var date = sel ? sel.value : TR_DATE;
+    var t = (getTasksAll()[TR_PANEL.period] || []).filter(function(x) { return x.id === TR_PANEL.id; })[0];
+    if (!t || !date) return;
+    var a = trGet();
+    a.push({ id: 'tr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), taskId: t.id, period: TR_PANEL.period, text: t.text, pts: t.pts != null ? t.pts : 0, persons: ids, date: date, at: new Date().toISOString() });
+    trSave(a);
+    var period = TR_PANEL.period; TR_PANEL = null; TR_SEL = {};
+    trRefresh(period);
+  }
+  // Section « confiées » sur la fiche d'un enfant
+  function trChildSectionHtml(person) {
+    var from = addDaysISO(todayISO(), -7), today = todayISO();
+    var list = trGet().filter(function(x) { return (x.persons || []).indexOf(person.id) !== -1 && x.date >= from; }).sort(function(a, b) { return a.date.localeCompare(b.date); });
+    var out = '<div class="hub-group-divider"><span>🤝 Tâches confiées par Anaïs</span></div>';
+    if (!list.length) return out + '<p class="points-note">Aucune tâche confiée pour l\'instant. Sur n\'importe quelle tâche, le bouton 🤝 permet de la confier à ' + esc(person.label) + ' pour un jour précis.</p>';
+    out += '<div class="cat-block">' + list.map(function(x) {
+      var task = (getTasksAll()[x.period] || []).filter(function(tt) { return tt.id === x.taskId; })[0];
+      var inPeriod = x.period === 'exceptional' || (x.period === 'daily' && x.date === today) ||
+        (x.period === 'weekly' && isoWeekKeyForDate(x.date) === isoWeekKeyForDate(today)) || (x.period === 'monthly' && x.date.slice(0, 7) === today.slice(0, 7));
+      var done = ((getChecksFor(x.period)[x.taskId]) || []).indexOf(person.id) !== -1 && inPeriod;
+      var action;
+      if (!task) action = '<span class="repeat-badge">tâche supprimée</span>';
+      else if (!inPeriod) action = '<span class="repeat-badge">' + (x.date > today ? 'à venir' : 'passé') + '</span>';
+      else action = '<div class="person-dot ' + (done ? 'on' : 'off') + '" style="--dot-color:' + person.color + '" onclick="togglePerson(' + jsAttr(x.period) + ',' + jsAttr(x.taskId) + ',' + jsAttr(person.id) + ');trRefresh(null)"><span class="circ">' + (done ? '✓' : person.init) + '</span>' + (done ? 'Fait' : 'Je l\'ai fait') + '</div>';
+      return '<div class="task-card' + (done ? ' alldone' : '') + '" style="cursor:default"><div class="task-row-top"><div class="task-text"><b>' + esc(trDateLabel(x.date)) + '</b> — ' + esc(x.text) + ' <span class="pts-badge">⭐ ' + (x.pts || 0) + '</span></div></div><div class="dots-row">' + action + '</div></div>';
+    }).join('') + '</div>';
+    return out;
+  }
+  // ── 📆 Ma semaine ──
+  function semMonday() { var t = todayISO(); return addDaysISO(t, -(planDow(t) - 1) + 7 * SEM_OFFSET); }
+  function semSetOffset(n) { SEM_OFFSET = n; SEM_ADD = null; renderMaSemaine(); }
+  function semToggleKids(wk) {
+    var kids = ficheChildren(); if (!kids.length) return;
+    var free = planKidFree(wk);
+    kids.forEach(function(k) { if (isChildAbsentWeek(k.id, wk) === free) toggleChildAbsence(k.id, wk); });
+    renderMaSemaine(); try { renderToday(); } catch (e) {}
+  }
+  function semOpenAdd(date) { SEM_ADD = (SEM_ADD === date) ? null : date; TR_SEL = {}; renderMaSemaine(); }
+  function semConfirmAdd(date) {
+    var sel = document.getElementById('sem-add-task'); if (!sel || !sel.value) return;
+    var pr = sel.value.split('|'), ids = Object.keys(TR_SEL).filter(function(k) { return TR_SEL[k]; });
+    if (!ids.length) ids = PERSONS.filter(function(p) { return p.role === 'adulte'; }).slice(0, 1).map(function(p) { return p.id; });
+    var t = (getTasksAll()[pr[0]] || []).filter(function(x) { return x.id === pr[1]; })[0]; if (!t) return;
+    var a = trGet();
+    a.push({ id: 'tr' + Date.now().toString(36) + Math.random().toString(36).slice(2, 5), taskId: t.id, period: pr[0], text: t.text, pts: t.pts != null ? t.pts : 0, persons: ids, date: date, at: new Date().toISOString() });
+    trSave(a); SEM_ADD = null; TR_SEL = {}; renderMaSemaine();
+  }
+  function semToggleSelAdd(pid) { if (TR_SEL[pid]) delete TR_SEL[pid]; else TR_SEL[pid] = true; renderMaSemaine(); }
+  function renderMaSemaine() {
+    var el = document.getElementById('view-semaine'); if (!el) return;
+    var plan = planGet(), all = getTasksAll(), mon = semMonday(), sun = addDaysISO(mon, 6), wk = isoWeekKeyForDate(mon), free = planKidFree(wk), kids = ficheChildren(), today = todayISO();
+    var tr = trGet();
+    var out = '<div class="back-link" onclick="showView(\'taches\', null)">‹ Tâches ménagères</div>';
+    out += '<div class="section-head"><h2>📆 Ma semaine</h2></div>';
+    out += '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">' +
+      '<button class="backup-btn-copy" onclick="semSetOffset(' + (SEM_OFFSET - 1) + ')">‹</button>' +
+      '<div style="text-align:center;font-weight:800">Du ' + esc(trDateLabel(mon)) + '<br>au ' + esc(trDateLabel(sun)) + (SEM_OFFSET === 0 ? ' <span class="repeat-badge">cette semaine</span>' : '') + '</div>' +
+      '<button class="backup-btn-copy" onclick="semSetOffset(' + (SEM_OFFSET + 1) + ')">›</button></div>';
+    out += '<div class="cat-block"><div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + (free ? '🌿 Semaine <b>sans</b> les enfants' : '👨‍👧 Semaine <b>avec</b> les enfants') + '</div></div>' +
+      (kids.length ? '<div style="margin-top:8px"><button class="backup-btn-copy" onclick="semToggleKids(' + jsAttr(wk) + ')">' + (free ? '👨‍👧 Les enfants sont là cette semaine-là' : '🌿 Les enfants ne sont pas là cette semaine-là') + '</button></div>' : '') + '</div></div>';
+    if (!plan.on) out += '<p class="points-note">Le programme n\'est pas actif : seules les tâches que tu confies à la main apparaissent ici. Tu peux le créer dans <a href="#" onclick="showView(\'planning\',null);return false" style="color:var(--green,#3F5D46);font-weight:700">Programme de la semaine</a>.</p>';
+    var dailyCount = (all.daily || []).length;
+    var allTasks = []; ['weekly', 'monthly', 'daily', 'exceptional'].forEach(function(p) { (all[p] || []).forEach(function(t) { allTasks.push({ p: p, t: t }); }); });
+    for (var i = 0; i < 7; i++) {
+      var d = addDaysISO(mon, i), items = [], seen = {};
+      if (plan.on) {
+        (all.weekly || []).forEach(function(t) { var pl = plan.weekly[t.id]; if (pl && planWeeklyDate(pl, d) === d) { items.push({ p: 'weekly', t: t }); seen[t.id] = 1; } });
+        (all.monthly || []).forEach(function(t) { var pl = plan.monthly[t.id]; if (pl && planMonthlyDate(pl, d) === d) { items.push({ p: 'monthly', t: t }); seen[t.id] = 1; } });
+      }
+      var manual = tr.filter(function(x) { return x.date === d && !seen[x.taskId]; });
+      var pts = 0;
+      var rows = '';
+      items.forEach(function(it) {
+        var given = tr.filter(function(x) { return x.date === d && x.taskId === it.t.id; });
+        var owner = given.length ? given.map(function(x) { return '<span class="repeat-badge" style="background:#FBE9DF">🤝 ' + esc(trPersonsLabel(x.persons)) + ' <a href="#" onclick="trCancel(' + jsAttr(x.id) + ');return false" style="color:inherit" title="Reprendre">✕</a></span>'; }).join(' ') : '<span class="repeat-badge">Moi</span>';
+        if (!given.length) pts += it.t.pts || 0;
+        rows += '<div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + esc(it.t.text) + ' <span class="pts-badge">⭐ ' + (it.t.pts || 0) + '</span> ' + owner + '</div>' +
+          (given.length ? '' : '<div class="task-actions"><button class="task-pin' + (TR_PANEL && TR_PANEL.id === it.t.id && TR_PANEL.fixed === d ? ' active' : '') + '" onclick="trTogglePanel(' + jsAttr(it.p) + ',' + jsAttr(it.t.id) + ',' + jsAttr(d) + ')" title="Confier à quelqu\'un">🤝</button></div>') + '</div>' +
+          (TR_PANEL && TR_PANEL.id === it.t.id && TR_PANEL.fixed === d ? trPanelHtml(it.p, it.t) : '') + '</div>';
+      });
+      manual.forEach(function(x) {
+        rows += '<div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + esc(x.text) + ' <span class="pts-badge">⭐ ' + (x.pts || 0) + '</span> <span class="repeat-badge" style="background:#FBE9DF">🤝 ' + esc(trPersonsLabel(x.persons)) + ' <a href="#" onclick="trCancel(' + jsAttr(x.id) + ');return false" style="color:inherit" title="Retirer">✕</a></span></div></div></div>';
+      });
+      out += '<div class="cat-block"><div class="cat-title"' + (d === today ? ' style="color:#B96A46"' : '') + '>' + esc(trDateLabel(d)) + (d === today ? ' · aujourd\'hui' : '') + (pts ? ' <span style="font-weight:500;color:var(--muted)">· mes points prévus : ⭐ ' + pts + '</span>' : '') + '</div>';
+      out += rows || '<div class="today-empty" style="padding:6px 0">Rien de prévu.</div>';
+      if (dailyCount) out += '<p class="points-note" style="margin:4px 0">🔁 + les ' + dailyCount + ' tâche' + (dailyCount > 1 ? 's' : '') + ' quotidienne' + (dailyCount > 1 ? 's' : '') + '.</p>';
+      if (SEM_ADD === d) {
+        out += '<div class="edit-panel"><div class="edit-date-label">➕ Ajouter une tâche à ce jour, pour :</div><div class="dots-row">' + PERSONS.map(function(p) {
+          var on = !!TR_SEL[p.id];
+          return '<div class="person-dot ' + (on ? 'on' : 'off') + '" style="--dot-color:' + p.color + '" onclick="semToggleSelAdd(' + jsAttr(p.id) + ')"><span class="circ">' + (on ? '✓' : p.init) + '</span>' + esc(p.label) + '</div>';
+        }).join('') + '</div><div class="edit-panel-row"><select id="sem-add-task">' + allTasks.map(function(x) { return '<option value="' + esc(x.p + '|' + x.t.id) + '">' + esc(PERIOD_LABELS[x.p] + ' — ' + x.t.text) + '</option>'; }).join('') + '</select></div>' +
+          '<p class="edit-date-label" style="font-weight:400">Si tu ne coches personne, c\'est pour la première adulte (toi).</p><button class="edit-save" onclick="semConfirmAdd(' + jsAttr(d) + ')">✅ Ajouter</button></div>';
+      } else out += '<button class="backup-btn-copy" style="margin-top:6px" onclick="semOpenAdd(' + jsAttr(d) + ')">➕ Ajouter une tâche ce jour-là</button>';
+      out += '</div>';
+    }
+    el.innerHTML = out;
+  }
   function renderPlanningView() {
     var el = document.getElementById('view-planning'); if (!el) return;
     var plan = planGet(), all = getTasksAll(), wk = isoWeekKeyForDate(todayISO()), free = planKidFree(wk), kids = ficheChildren();
@@ -5090,6 +5267,7 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
       out += '<button class="task-pin' + (pinnedNow ? ' active' : '') + '" onclick="togglePinToday(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="' + (pinnedNow ? 'Retirer de Aujourd\'hui' : 'Programmer pour aujourd\'hui') + '">📌</button>';
     }
     if (period !== 'argent') {
+      out += '<button class="task-pin' + (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === t.id ? ' active' : '') + '" onclick="trTogglePanel(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="Confier à quelqu\'un, à une date précise">🤝</button>';
       out += '<button class="task-malus' + (isMalus ? ' active' : '') + '" onclick="toggleMalusPanel(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="Mettre un malus (tâche non faite)">⚠️</button>';
     }
     var isSharing = !!SHARE_MODE[shareKey(period, t.id)];
@@ -5100,6 +5278,8 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
     out += '<button class="task-del' + (isDeletePending ? ' active' : '') + '" onclick="toggleDeleteTask(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="Supprimer">✕</button>';
     out += '</div></div>';
     if (dateChips) out += dateChips;
+    out += trBadgesHtml(t.id);
+    if (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === t.id && period !== 'argent') out += trPanelHtml(period, t);
     if (isMalus) {
       out += '<div class="malus-panel">';
       out += '<div class="malus-title">⚠️ Tâche non faite — retirer des points à :</div>';
@@ -7444,11 +7624,12 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
   // ouvrent les vrais sous-écrans (Quotidien, Hebdo, Mensuel, Ça rapporte, Bonus, Malus, Implication,
   // Mes accès). NAV_PARENT dit, pour un sous-écran donné, quel onglet du bas doit rester actif.
   var NAV_PARENT = {
-    daily: 'taches', weekly: 'taches', monthly: 'taches', exceptional: 'taches', argent: 'taches', histo: 'taches', planning: 'taches',
+    daily: 'taches', weekly: 'taches', monthly: 'taches', exceptional: 'taches', argent: 'taches', histo: 'taches', planning: 'taches', semaine: 'taches',
     bonus: 'famille', malus: 'famille', points: 'famille', acces: 'famille', rappel: 'famille', fiches: 'famille', tuto: 'famille', journee: 'famille'
   };
   var HUB_ICONS_MH = {
     planning: { bg: '#E7EEE1', fg: '#3F5D46', svg: '<span style="font-size:20px;line-height:1">🗓️</span>' },
+    semaine: { bg: '#FBE9DF', fg: '#B96A46', svg: '<span style="font-size:20px;line-height:1">📆</span>' },
     journee: { bg: '#FBE9DF', fg: '#B96A46', svg: '<span style="font-size:20px;line-height:1">🌈</span>' },
     daily: { bg: '#F7E4D8', fg: '#8A4A21', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg>' },
     weekly: { bg: '#E3ECF2', fg: '#3D5A73', svg: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round" stroke-linejoin="round"><rect x="3.5" y="5" width="17" height="15" rx="2.5"/><path d="M3.5 9.5h17M8 3v3.5M16 3v3.5"/><path d="M7.5 13.5h3M7.5 16.5h3M13.5 13.5h3"/></svg>' },
@@ -7476,6 +7657,7 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
     if (!el) return;
     el.innerHTML =
       '<div class="section-head"><h2>📋 Tâches ménagères</h2></div>' +
+      hubItemHtmlMH('semaine', 'Ma semaine', 'Jour par jour, avec les dates — et ce que je confie aux enfants') +
       hubItemHtmlMH('planning', 'Programme de la semaine', 'Quelle tâche, quel jour — hebdo et mensuel') +
       hubItemHtmlMH('daily', 'Quotidien', 'Les tâches de tous les jours') +
       hubItemHtmlMH('weekly', 'Hebdo', 'Une fois par semaine') +
@@ -7749,6 +7931,7 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
       out += '<div class="hub-group-divider"><span>' + PERIOD_LABELS[period] + '</span></div>';
       out += '<div class="cat-block">' + personal.map(function(t) { return taskCardHtml(period, t, checks); }).join('') + '</div>';
     });
+    out += trChildSectionHtml(person);
     if (!anyPersonal) {
       out += '<div class="empty"><div class="icon">🗒️</div>Aucune tâche perso pour ' + esc(person.label) + ' pour l\'instant.<br>Ajoutes-en une ci-dessous.</div>';
     }
@@ -8012,6 +8195,7 @@ window.MH_BUILD_VERSION = '2026-11-05-programme-auto';
     if (view === 'tuto') renderTutoViewMH();
     if (view === 'histo') renderHistoView();
     if (view === 'planning') renderPlanningView();
+    if (view === 'semaine') renderMaSemaine();
     if (view === 'acces') {
       if (ADMIN_UNLOCKED) {
         renderAccesTab();
