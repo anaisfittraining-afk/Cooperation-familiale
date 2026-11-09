@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-09-sans-liste-enfant-1';
+window.MH_BUILD_VERSION = '2026-11-09-pot-plein-3';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -96,6 +96,15 @@ window.MH_BUILD_VERSION = '2026-11-09-sans-liste-enfant-1';
     font-size: 12.5px; font-weight: 700; padding: 8px 4px; border-radius: 20px; cursor: pointer; font-family: inherit;
   }
   .setup-tab.active { background: var(--green); border-color: var(--green); color: white; }
+  /* Écran Technique : « Retour » toujours visible (collé en haut, grande zone de clic) + bouton en bas */
+  #techniqueOverlay .tech-back-top {
+    position: sticky; top: -24px; z-index: 5; display: flex; font-size: 15px; padding: 12px 6px; margin: -20px -20px 12px;
+    background: var(--card); border-bottom: 1px solid var(--border); border-radius: 16px 16px 0 0; color: var(--green);
+  }
+  .tech-back-btn {
+    display: block; width: 100%; margin-top: 18px; padding: 14px; border: none; border-radius: 12px;
+    background: var(--green); color: #fff; font-size: 15px; font-weight: 700; cursor: pointer; font-family: inherit;
+  }
   .admin-code-overlay {
     position: fixed; inset: 0; background: rgba(20,30,25,0.55); z-index: 200;
     display: none; align-items: center; justify-content: center; padding: 24px;
@@ -1317,7 +1326,7 @@ window.MH_BUILD_VERSION = '2026-11-09-sans-liste-enfant-1';
 
   <div class="setup-overlay" id="techniqueOverlay" style="display:none;">
     <div class="setup-modal">
-      <div class="back-link" onclick="closeTechniquePanel()">‹ Retour</div>
+      <div class="back-link tech-back-top" onclick="closeTechniquePanel()">‹ Retour aux paramètres</div>
       <h2>🔧 Technique</h2>
       <p class="setup-intro">Réinitialisation, sauvegarde et outils de correction — section réservée aux parents.</p>
       <div class="reset-points-zone">
@@ -1411,6 +1420,7 @@ window.MH_BUILD_VERSION = '2026-11-09-sans-liste-enfant-1';
           </div>
         </div>
       </div>
+      <button class="tech-back-btn" onclick="closeTechniquePanel()">‹ Retour aux paramètres</button>
     </div>
   </div>
 
@@ -1633,8 +1643,9 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   var trust = null; try { trust = JSON.parse(g('mh_gate_v1') || 'null'); } catch (e) {}
   // 🔧 Réparation : un appareil d'Anaïs (marqué « propriétaire », ou ouvert avec ?moi) ne peut pas être l'appareil d'un enfant.
   // Les versions précédentes recopiaient la connexion d'un enfant sur tous les appareils : on l'efface ici.
-  if (trust && trust.member && (g('mh_owner_v1') === '1' || /[?&]moi(=|&|$)/.test(location.search || ''))) {
-    try { LS.removeItem('mh_gate_v1'); LS.removeItem('mh_member_dev'); } catch (e) {}
+  // (sauf si la connexion a été saisie SUR cet appareil : téléphone partagé entre Anaïs et son enfant → le code de l'enfant est gardé)
+  if (trust && trust.member && (/[?&]moi(=|&|$)/.test(location.search || '') || (g('mh_owner_v1') === '1' && g('mh_gate_origin') !== 'local'))) {
+    try { LS.removeItem('mh_gate_v1'); LS.removeItem('mh_member_dev'); LS.removeItem('mh_gate_origin'); } catch (e) {}
     trust = null;
   }
   if (trust && (trust.client || trust.member)) return;     // appareil d'une cliente (ou d'un membre de la famille) déjà connecté
@@ -1698,7 +1709,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     }).then(function(e) {
       if (!e || !(e.client || e.member)) { fin(function() { fails.push(Date.now()); sv('mh_gate_fail', JSON.stringify(fails)); showErr('Ce code n\'est pas reconnu. Vérifie-le ou redemande-le à ta coach.'); }); return; }
       if (e.active === false) { fin(function() { showErr('Ce code n\'est plus valable. Demande-en un nouveau à ta coach.'); }); return; }
-      fin(function() { if (e.member) sv('mh_member_dev', '1'); sv('mh_gate_v1', JSON.stringify({ h: h, client: e.client || '', member: e.member || '', name: e.name || '', email: e.email || '', t: Date.now() })); location.replace(location.pathname); });
+      fin(function() { if (e.member) sv('mh_member_dev', '1'); sv('mh_gate_origin', 'local'); sv('mh_gate_v1', JSON.stringify({ h: h, client: e.client || '', member: e.member || '', name: e.name || '', email: e.email || '', t: Date.now() })); location.replace(location.pathname); });
     }).catch(function() { fin(function() { showErr('Connexion impossible. Vérifie ta connexion internet et réessaie.'); }); });
   }
   setTimeout(function() { try { inp.focus(); } catch (e) {} }, 100);
@@ -2795,7 +2806,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   KEYSYNC_EXCLUDE[SEEN_AT_KEY] = true; KEYSYNC_EXCLUDE[SYNC_BASE_KEY] = true; KEYSYNC_EXCLUDE[SAFETY_LAST_KEY] = true; KEYSYNC_EXCLUDE[SAFETY_PRUNE_KEY] = true; // repères propres à l'appareil
   // 🛑 Identité de l'appareil : « cet appareil est celui d'un enfant / d'Anaïs » ne doit JAMAIS voyager d'un appareil à
   // l'autre (sinon la connexion d'un enfant faisait basculer les autres appareils en mode enfant).
-  ['mh_gate_v1', 'mh_member_dev', 'mh_owner_v1', 'mh_build_seen_v1', 'mep_build_seen_v1', 'setItem', 'removeItem'].forEach(function(k) { KEYSYNC_EXCLUDE[k] = true; });
+  ['mh_gate_v1', 'mh_gate_origin', 'mh_member_dev', 'mh_owner_v1', 'mh_build_seen_v1', 'mep_build_seen_v1', 'setItem', 'removeItem'].forEach(function(k) { KEYSYNC_EXCLUDE[k] = true; });
   KEYSYNC_EXCLUDE[SYNC_PENDING_KEY] = true; // purement transitoire (marqueur "pas encore envoyé"), pas la peine de la sauvegarder
   var keysyncOriginalSetItem = null;
   var keysyncOriginalRemoveItem = null;
@@ -2812,8 +2823,14 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     meta[key] = ts;
     try { keysyncOriginalSetItem(KEYSYNC_META_KEY, JSON.stringify(meta)); } catch (e) {}
   }
+  // Ce site partage le même navigateur (donc la même mémoire locale, limitée à quelques Mo) que le tableau de
+  // bord et les autres applis d'Anaïs. L'appli famille ne sauvegarde / ne recopie donc QUE ses propres données
+  // (« mh_… »), jamais celles des autres applis : sinon elle remplissait la mémoire du téléphone avec le
+  // tableau de bord et les enregistrements finissaient par échouer sans aucun message.
+  function keysyncOwn(k) { k = String(k); return k.indexOf('mh_') === 0 || (NS && k.indexOf(NS + 'mh_') === 0); }
+  var FOREIGN_CLOUD_HASH = {}; // clé d'une autre appli → empreinte de sa copie dans le cloud (pour savoir ce qu'on peut libérer sans rien perdre)
   function keysyncSchedule(key, value) {
-    if (KEYSYNC_EXCLUDE[key]) return;
+    if (KEYSYNC_EXCLUDE[key] || !keysyncOwn(key)) return;
     clearTimeout(keysyncTimers[key]);
     keysyncTimers[key] = setTimeout(function() { keysyncPushKey(key, value); }, 900);
   }
@@ -2850,7 +2867,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var meta = keysyncGetMeta();
     for (var i = 0; i < localStorage.length; i++) {
       var k = localStorage.key(i);
-      if (KEYSYNC_EXCLUDE[k] || meta[k]) continue;
+      if (KEYSYNC_EXCLUDE[k] || meta[k] || !keysyncOwn(k)) continue;
       // Si cette donnée existe déjà dans le cloud, on ne l'écrase JAMAIS à l'ouverture (elle peut être plus récente
       // que la copie locale) : c'est l'écoute en direct ci-dessous qui l'applique ici.
       (function(key) {
@@ -2867,6 +2884,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var v = snap.val();
     if (!v || typeof v.t !== 'number') return;
     if (KEYSYNC_EXCLUDE[rawKey]) return;
+    if (!keysyncOwn(rawKey)) { FOREIGN_CLOUD_HASH[rawKey] = hashStr(v.v); return; } // donnée d'une autre appli : on ne la copie plus ici
     var meta = keysyncGetMeta();
     var lastApplied = meta[rawKey] || 0;
     // Ne pas se fier qu'à l'horodatage : si la clé a disparu localement sans passer par notre propre
@@ -2883,7 +2901,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   function keysyncApplyRemoved(snap) {
     var rawKey = snap.key;
-    if (KEYSYNC_EXCLUDE[rawKey] || !keysyncOriginalRemoveItem) return;
+    if (KEYSYNC_EXCLUDE[rawKey] || !keysyncOriginalRemoveItem || !keysyncOwn(rawKey)) return;
     try { keysyncOriginalRemoveItem(rawKey); } catch (e) {}
   }
   function keysyncShowIncompleteWarning() {
@@ -2894,6 +2912,47 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     b.textContent = '⚠️ Une donnée n\'a pas pu être restaurée depuis le cloud — le stockage de ce navigateur est probablement plein.';
     document.body.appendChild(b);
   }
+  function storageIsQuotaError(e) { return !!e && (e.name === 'QuotaExceededError' || e.name === 'NS_ERROR_DOM_QUOTA_REACHED' || e.code === 22 || e.code === 1014 || /quota/i.test(String(e.message || ''))); }
+  function storageUsedChars() { var n = 0; try { for (var i = 0; i < localStorage.length; i++) { var k = localStorage.key(i); n += k.length + (localStorage.getItem(k) || '').length; } } catch (e) {} return n; }
+  var STORAGE_FREED_NOTICE = false;
+  function storageFreeSpace(needed) {
+    var freed = 0, list = [];
+    try {
+      for (var i = 0; i < localStorage.length; i++) {
+        var k = localStorage.key(i);
+        if (keysyncOwn(k) || KEYSYNC_EXCLUDE[k] || /^(mh_|c_[a-z0-9_-]+_mh_)/.test(k)) continue;
+        var val = localStorage.getItem(k) || '';
+        // 1) caches et restes techniques sans valeur ; 2) données d'une autre appli dont la copie en ligne est strictement identique
+        var cache = /(_cache_|^firebase:|^setItem$|^removeItem$)/.test(k);
+        var inCloud = FOREIGN_CLOUD_HASH[keysyncSafeKey(k)] === hashStr(val);
+        if (cache || inCloud) list.push({ k: k, n: k.length + val.length, cache: cache });
+      }
+    } catch (e) {}
+    list.sort(function(a, b) { return (b.cache - a.cache) || (b.n - a.n); });
+    for (var j = 0; j < list.length && freed < needed + 200000; j++) {
+      try { (keysyncOriginalRemoveItem || localStorage.removeItem.bind(localStorage))(list[j].k); freed += list[j].n; } catch (e) {}
+    }
+    if (freed > 0 && !STORAGE_FREED_NOTICE) {
+      STORAGE_FREED_NOTICE = true;
+      try {
+        var b = document.createElement('div');
+        b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99998;background:#3F5D46;color:#fff;padding:10px 38px 10px 14px;font-size:13px;font-weight:600;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.2)';
+        b.innerHTML = '💾 La mémoire de ce navigateur était presque pleine : j\'ai libéré de la place pour que tes modifications s\'enregistrent. Rien n\'est perdu (les données du tableau de bord restent en ligne et se rechargent toutes seules).<span onclick="this.parentNode.remove()" style="position:absolute;right:12px;top:8px;cursor:pointer;font-size:16px">✕</span>';
+        document.body.appendChild(b);
+      } catch (e) {}
+    }
+    return freed;
+  }
+  function storageShowFullBanner() {
+    try {
+      if (document.getElementById('storageFullBanner')) return;
+      var b = document.createElement('div');
+      b.id = 'storageFullBanner';
+      b.style.cssText = 'position:fixed;top:0;left:0;right:0;z-index:99999;background:#c53030;color:#fff;padding:12px 38px 12px 14px;font-size:13.5px;font-weight:700;text-align:center;box-shadow:0 2px 10px rgba(0,0,0,.25)';
+      b.innerHTML = '⚠️ Ta dernière modification n\'a PAS été enregistrée : la mémoire de ce navigateur est pleine. Ferme et rouvre l\'appli, ou dis-le à Claude.<span onclick="this.parentNode.remove()" style="position:absolute;right:12px;top:10px;cursor:pointer;font-size:16px">✕</span>';
+      document.body.appendChild(b);
+    } catch (e) {}
+  }
   function keysyncPatchLocalStorage() {
     if (KEYSYNC_PATCHED) return;
     KEYSYNC_PATCHED = true;
@@ -2902,12 +2961,20 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     keysyncOriginalSetItem = originalSetItem;
     keysyncOriginalRemoveItem = originalRemoveItem;
     localStorage.setItem = function(k, v) {
-      originalSetItem(k, v);
+      try { originalSetItem(k, v); }
+      catch (e) {
+        // Mémoire du navigateur pleine : on libère de la place (uniquement des données d'autres applis dont une
+        // copie identique est déjà en ligne — elles se rechargent toutes seules), puis on réessaie.
+        if (!storageIsQuotaError(e)) throw e;
+        storageFreeSpace(String(k).length + String(v).length + 2000);
+        try { originalSetItem(k, v); }
+        catch (e2) { storageShowFullBanner(); throw e2; }
+      }
       keysyncSchedule(k, v);
     };
     localStorage.removeItem = function(k) {
       originalRemoveItem(k);
-      if (!KEYSYNC_EXCLUDE[k]) keysyncPushRemove(k);
+      if (!KEYSYNC_EXCLUDE[k] && keysyncOwn(k)) keysyncPushRemove(k);
     };
   }
   keysyncPatchLocalStorage(); // dès la lecture du script, avant tout enregistrement possible
@@ -3075,7 +3142,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   function mhHasTrust() { try { return !!JSON.parse(localStorage.getItem('mh_gate_v1') || 'null'); } catch (e) { return false; } }
   function mhLogout() {
     if (!window.confirm('Se déconnecter de cet appareil ? Tes données restent enregistrées : tu les retrouveras avec ton code d\'accès.')) return;
-    try { localStorage.removeItem('mh_gate_v1'); } catch (e) {}
+    try { localStorage.removeItem('mh_gate_v1'); localStorage.removeItem('mh_gate_origin'); } catch (e) {}
     location.replace(location.pathname);
   }
   function renderAccesTab() { /* la gestion des accès se fait depuis le tableau de bord d'Anaïs */ }
@@ -6194,7 +6261,14 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var maxE = target * vpp, enCours = Math.max(0, Math.min(maxE, pts * vpp));
     var avail = pocketAvailableFor(p.id, ledger), w = getWalletFor(p.id);
     var card = 'background:var(--card);border:1px solid var(--border);border-radius:16px;padding:14px 16px;margin-bottom:12px';
-    out += '<div style="' + card + '"><div style="font-weight:800;font-size:14.5px">Ce mois-ci</div>'
+    var potM = jrPotInfo(p.id, periodKey('monthly'));
+    if (potM.active) {
+      var pctP = potM.monthly > 0 ? Math.round(potM.left * 100 / potM.monthly) : 0;
+      out += '<div style="' + card + '"><div style="font-weight:800;font-size:14.5px">Mon pot du mois</div>'
+        + '<div style="font-size:28px;font-weight:800;margin:6px 0">' + fmtEuros(potM.left) + ' € <span style="font-size:14px;color:var(--muted);font-weight:600">sur ' + fmtEuros(potM.monthly) + ' €</span></div>'
+        + '<div style="height:16px;border-radius:999px;background:#E6DEC9;overflow:hidden;margin:6px 0"><div style="height:100%;width:' + pctP + '%;background:linear-gradient(90deg,#7FA77A,#3F5D46);border-radius:999px"></div></div>'
+        + '<div style="font-size:13px;color:var(--muted);font-weight:600">Chaque jour où ma journée n\'est pas validée, le pot baisse de ' + fmtEuros(round2(potM.daily)) + ' €.' + (potM.lost ? ' Jours perdus : ' + potM.lost + '.' : ' Aucun jour perdu, bravo !') + '</div></div>';
+    } else out += '<div style="' + card + '"><div style="font-weight:800;font-size:14.5px">Ce mois-ci</div>'
       + '<div style="height:16px;border-radius:999px;background:#E6DEC9;overflow:hidden;margin:10px 0 6px"><div style="height:100%;width:' + pct + '%;background:linear-gradient(90deg,#7FA77A,#3F5D46);border-radius:999px"></div></div>'
       + '<div style="font-size:13px;color:var(--muted);font-weight:600">' + Math.round(pts * 10) / 10 + ' points sur ' + target + ' · ' + pct + ' %</div>'
       + '<div style="font-size:13px;margin-top:8px">Si tu continues comme ça : <b>' + fmtEuros(enCours) + ' €</b> sur ' + fmtEuros(maxE) + ' €</div></div>';
@@ -7632,9 +7706,9 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     try { return JSON.parse(localStorage.getItem(POCKET_MONTH_HISTORY_KEY) || '[]') || []; } catch(e) { return []; }
   }
   function savePocketMonthHistoryAll(list) { localStorage.setItem(POCKET_MONTH_HISTORY_KEY, JSON.stringify(list)); scheduleSyncPublish(); }
-  function recordPocketMonthHistory(personId, ym, result, euros, pts, target) {
+  function recordPocketMonthHistory(personId, ym, result, euros, pts, target, extra) {
     var hist = getPocketMonthHistoryAll().filter(function(h) { return !(h.personId === personId && h.ym === ym); });
-    hist.push({ id: 'pmh' + Date.now() + '-' + personId + '-' + ym, personId: personId, ym: ym, result: result, euros: euros, pts: pts, target: target, closedDate: todayISO() });
+    hist.push({ id: 'pmh' + Date.now() + '-' + personId + '-' + ym, personId: personId, ym: ym, result: result, euros: euros, pts: pts, target: target, closedDate: todayISO(), extra: extra || null });
     savePocketMonthHistoryAll(hist);
   }
 
@@ -7649,6 +7723,15 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       // directement en euros dans la foulée (jamais reporté en points sur le mois suivant). Sinon, tout
       // est perdu. Absence totale ce mois-ci (0 semaine de présence) : mois neutre, ni gain ni perte.
       // `entry.carry` n'est plus utilisé pour reporter des points d'un mois sur l'autre ; il reste à 0.
+      // Nouveau système « pot plein qui diminue » (dès que la journée de l'enfant est utilisée ce mois-là) :
+      // ce qui reste du pot en fin de mois est acquis, en bloc.
+      var potJ = jrPotInfo(personId, monthToClose), vppJ = pocketValuePerPoint();
+      if (potJ.active && potJ.started && vppJ > 0) {
+        entry.bank = Math.max(0, entry.bank) + potJ.left / vppJ;
+        entry.carry = 0;
+        recordPocketMonthHistory(personId, monthToClose, potJ.left > 0 ? 'won' : 'lost', potJ.left, round2(potJ.left / vppJ), targets[personId], { mode: 'jours', lost: potJ.lost, abs: potJ.abs, monthly: potJ.monthly });
+        return;
+      }
       var checkpoints = pocketMonthCheckpoints(personId, monthToClose, entry.carry);
       if (checkpoints.weeks.length > 0) {
         var allReached = checkpoints.weeks.every(function(w) { return w.reached; });
@@ -8006,7 +8089,10 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       var currentWeekEntry = curCheckpoints.weeks.filter(function(w){ return w.status === 'current'; })[0];
       var monthAlreadyLost = !!failedPastWeek;
       var warningHtml = '';
-      if (curCheckpoints.weeks.length === 0) {
+      var potLive = jrPotInfo(p.id, displayYM), potNew = potLive.active && potLive.started;
+      if (potNew) {
+        // nouveau système « pot plein qui diminue » : pas d'avertissement par points
+      } else if (curCheckpoints.weeks.length === 0) {
         // absence totale ce mois-ci : mois neutre, rien à signaler
       } else if (monthAlreadyLost) {
         warningHtml = '<div class="pocket-warning lost">⚠️ Le pot de ce mois est déjà perdu : la semaine du ' + weekLabelFR(failedPastWeek.weekKey) + ' n\'a pas atteint la moitié de l\'objectif (' + Math.max(0, Math.round(failedPastWeek.pts)) + ' / ' + curCheckpoints.halfTarget + ' pts).</div>';
@@ -8028,12 +8114,21 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       // ── Subcard 💶 Argent de poche (tâches ménagères) — tout ou rien, par quinzaine de présence ──
       out += '<div class="pot-subcard pot-subcard-pocket">';
       var pocketFillPct = maxEuros > 0 ? (available / maxEuros * 100) : 0;
+      var heroEuros = available, heroCap = 'pot complet : ' + fmtEuros(maxEuros) + ' €/mois · tarif ' + fmtEuros(valuePerPoint) + ' €/pt';
+      if (potLive.active) {
+        heroEuros = potLive.left;
+        pocketFillPct = potLive.monthly > 0 ? (potLive.left / potLive.monthly * 100) : 0;
+        heroCap = 'pot de ' + formatMonthLabel(displayYM) + ' : il part de ' + fmtEuros(potLive.monthly) + ' € et baisse de ' + fmtEuros(round2(potLive.daily)) + ' € par jour non validé'
+          + (potLive.lost ? ' · ' + potLive.lost + ' jour' + (potLive.lost > 1 ? 's' : '') + ' perdu' + (potLive.lost > 1 ? 's' : '') : '')
+          + (potLive.abs ? ' · ' + potLive.abs + ' jour' + (potLive.abs > 1 ? 's' : '') + ' d\'absence non compté' + (potLive.abs > 1 ? 's' : '') : '')
+          + (available > 0.004 ? '<br>✅ Déjà gagné, à répartir : <b>' + fmtEuros(available) + ' €</b>' : '');
+      }
       // Le montant affiché en gros est bien ce qu'il reste à répartir (et non le cumul gagné depuis
       // toujours) : il redescend à 0 € dès que tout a été réparti, puis remonte avec les points gagnés.
       out += '<div class="tirelire-hero">' + tirelireSvg('piggy', pocketFillPct, '#3F5D46') +
         '<div class="tirelire-hero-label">💶 Argent de poche <span class="tirelire-hero-sub">(ménage)</span></div>' +
-        '<div class="tirelire-hero-euros">' + fmtEuros(available) + ' €</div>' +
-        '<div class="tirelire-hero-cap">pot complet : ' + fmtEuros(maxEuros) + ' €/mois · tarif ' + fmtEuros(valuePerPoint) + ' €/pt</div>' +
+        '<div class="tirelire-hero-euros">' + fmtEuros(heroEuros) + ' €</div>' +
+        '<div class="tirelire-hero-cap">' + heroCap + '</div>' +
         '</div>';
       if (debtTotal > 0.004) {
         out += '<div class="pot-debt-flag">⚠️ Dette en cours : <b>' + fmtEuros(debtTotal) + ' €</b></div>';
@@ -8041,7 +8136,18 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       var isMenageDetailOpen = MENAGE_DETAIL_OPEN === p.id;
       out += '<button class="detail-toggle-btn" onclick="toggleMenageDetailOpen(' + jsAttr(p.id) + ')">' + (isMenageDetailOpen ? '▲ Masquer les détails' : '🔍 Voir les semaines, avertissements et répartition') + '</button>';
       out += '<div class="pot-details" style="display:' + (isMenageDetailOpen ? 'block' : 'none') + ';">';
-      if (curCheckpoints.weeks.length === 0) {
+      if (potNew) {
+        out += '<div class="pocket-note" style="margin-top:0;">📅 <b>' + esc(formatMonthLabel(displayYM)) + '</b> : le pot part plein (' + fmtEuros(potLive.monthly) + ' €). Chaque jour passé sans validation par un parent en retire ' + fmtEuros(round2(potLive.daily)) + ' €. Les jours d\'absence ne retirent rien.</div>';
+        out += '<div class="split-row"><span>✅ Jours validés</span><span>' + potLive.val + '</span></div>';
+        out += '<div class="split-row"><span>🏠 Jours d\'absence (non comptés)</span><span>' + potLive.abs + '</span></div>';
+        out += '<div class="split-row"><span>❌ Jours perdus</span><span>' + potLive.lost + ' (−' + fmtEuros(round2(potLive.lost * potLive.daily)) + ' €)</span></div>';
+        if (potLive.lostDays.length) out += '<div class="pocket-note">' + potLive.lostDays.map(function(d) { var q = d.split('-'); return q[2] + '/' + q[1]; }).join(' · ') + '</div>';
+        out += '<div class="pocket-note">Le pot restant (' + fmtEuros(potLive.left) + ' €) devient « à répartir » à la clôture du mois. Le décompte a commencé le ' + potLive.start.split('-').reverse().join('/') + ' (première journée enregistrée).</div>';
+        curCheckpoints.weeks.forEach(function(w) {
+          if (w.status === 'future') return;
+          out += '<button class="detail-toggle-btn" onclick="toggleChildAbsence(' + jsAttr(p.id) + ',' + jsAttr(w.weekKey) + ')">🚫 Marquer la semaine du ' + weekLabelFR(w.weekKey) + ' absente (non comptée)</button>';
+        });
+      } else if (curCheckpoints.weeks.length === 0) {
         out += '<div class="split-row"><span>🚫 Absent(e) tout le mois <span style="color:var(--muted);font-weight:500;">(mois neutre : ni gagné ni perdu)</span></span></div>';
       } else {
         // Décompte des points du mois converti en euros, toujours affiché — même si le mois ne se
@@ -8099,8 +8205,9 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
           personMonthHist.forEach(function(h) {
             var icon = h.result === 'won' ? '✅' : (h.result === 'lost' ? '❌' : '⚪');
             var text;
-            if (h.result === 'won') text = fmtEuros(h.euros) + ' € gagnés (' + h.pts + ' pts, objectif atteint chaque semaine)';
-            else if (h.result === 'lost') text = 'Pot perdu (' + h.pts + ' / ' + h.target + ' pts — une semaine de présence n\'a pas atteint la moitié de l\'objectif)';
+            if (h.extra && h.extra.mode === 'jours') text = fmtEuros(h.euros) + ' € gagnés sur ' + fmtEuros(h.extra.monthly) + ' € (' + h.extra.lost + ' jour' + (h.extra.lost > 1 ? 's' : '') + ' non validé' + (h.extra.lost > 1 ? 's' : '') + (h.extra.abs ? ', ' + h.extra.abs + ' d\'absence non comptés' : '') + ')';
+            else if (h.result === 'won') text = fmtEuros(h.euros) + ' € gagnés (' + h.pts + ' pts, objectif atteint chaque semaine)';
+            else if (h.result === 'lost' && !(h.extra && h.extra.mode === 'jours')) text = 'Pot perdu (' + h.pts + ' / ' + h.target + ' pts — une semaine de présence n\'a pas atteint la moitié de l\'objectif)';
             else text = 'Absent(e) tout le mois (mois neutre)';
             var rowStyle = h.result === 'won' ? 'background:#E7EEE1;border-color:#B7CDAE;' : (h.result === 'lost' ? '' : 'background:#F1EADA;border-color:#E2DCC8;');
             var textColor = h.result === 'won' ? 'color:#276749;' : (h.result === 'lost' ? '' : 'color:var(--muted);');
@@ -9442,6 +9549,37 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var monthly = parseFloat(o.config.monthly[pid]) || 0, daily = monthly / dim;
     return { dim: dim, val: val, abs: abs, monthly: monthly, daily: daily, total: round2(daily * (val + abs)) };
   }
+  // 💶 POT PLEIN QUI DIMINUE : le mois commence avec le pot COMPLET ; chaque jour passé et non validé par un
+  // parent en retire sa part (pot ÷ nombre de jours du mois). Une journée validée ne retire rien ; un jour
+  // d'absence (semaine chez l'autre parent) ne retire rien non plus. Le décompte commence au jour du tout
+  // premier enregistrement de journée de l'enfant (jamais de pénalité rétroactive). Le jour même n'est
+  // décidé qu'une fois passé. Pot du mois = réglage « Argent de poche du mois » de la fiche, sinon le pot du mois de l'appli.
+  function jrPotInfo(pid, ym) {
+    var o = jrGet(), pp = ym.split('-').map(Number), dim = daysInMonth(pp[0], pp[1] - 1), today = todayISO();
+    var vpp = pocketValuePerPoint();
+    var monthly = parseFloat(o.config.monthly[pid]) || 0;
+    if (!(monthly > 0) && POCKET_TARGETS[pid] != null) monthly = round2(POCKET_TARGETS[pid] * vpp);
+    var info = { active: POCKET_TARGETS[pid] != null && monthly > 0, started: false, monthly: monthly, dim: dim, daily: dim ? monthly / dim : 0, val: 0, abs: 0, lost: 0, lostDays: [], left: monthly, start: null };
+    if (!info.active) return info;
+    var recs = (o.days && o.days[pid]) || {}, first = null;
+    Object.keys(recs).forEach(function(d) {
+      var r = recs[d];
+      if (r && (r.validated || (r.ticks && Object.keys(r.ticks).length)) && (!first || d < first)) first = d;
+    });
+    info.start = first;
+    if (!first || first > ym + '-' + pad2(dim)) return info;
+    info.started = true;
+    for (var d = 1; d <= dim; d++) {
+      var ds = ym + '-' + pad2(d);
+      if (ds < first) continue;
+      if (ds >= today) break;
+      if (jrDayRec(o, pid, ds).validated) info.val++;
+      else if (jrIsAbsent(o, pid, ds)) info.abs++;
+      else { info.lost++; info.lostDays.push(ds); }
+    }
+    info.left = Math.max(0, round2(info.monthly - info.lost * info.daily));
+    return info;
+  }
   // Demande le code parent À CHAQUE FOIS (sans conserver le déverrouillage des Paramètres) : un enfant
   // qui a la main sur l'appli après un déverrouillage ne peut pas valider sa propre journée.
   function jrAskParent(cb) {
@@ -9521,7 +9659,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += '</div>';
 
     var rec = jrDayRec(o, pid, date), status = jrStatus(o, pid, date), tasks = jrTasks(o, pid, date), dn = jrDone(o, pid, date);
-    var stats = jrMonthStats(o, pid, date.slice(0, 7));
+    var stats = jrMonthStats(o, pid, date.slice(0, 7)), potJ = jrPotInfo(pid, date.slice(0, 7));
     var pdate = date.split('-').map(Number), longDate = JR_DAYS[new Date(pdate[0], pdate[1] - 1, pdate[2]).getDay()] + ' ' + pdate[2] + ' ' + JR_MONTHS[pdate[1] - 1];
     out += '<div class="jr-card"><div style="font-weight:700;font-size:16px;margin-bottom:2px;">' + esc(person.label) + ' — ' + (date === today ? 'aujourd\'hui' : esc(longDate)) + '</div>';
     if (date === today) out += '<div style="font-size:12.5px;color:#66735F;">' + esc(longDate) + '</div>';
@@ -9538,7 +9676,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     }
     var unlocked = status === 'valide' || status === 'absent';
     out += '<div class="jr-unlock"><div class="jr-chip ' + (unlocked ? 'on' : 'off') + '">' + (unlocked ? '🎮 Loisirs du jour débloqués' : '🔒 Loisirs : après validation') + '</div>'
-      + (jrIsAdult(pid) ? '' : '<div class="jr-chip ' + (unlocked ? 'on' : 'off') + '">' + (stats.monthly > 0 ? ('💶 ' + (unlocked ? '+' : '') + fmtEuros(round2(stats.daily)) + ' €' + (unlocked ? ' gagnés' : ' à gagner')) : '💶 Argent de poche non réglé') + '</div>') + '</div>';
+      + (jrIsAdult(pid) ? '' : '<div class="jr-chip ' + (unlocked ? 'on' : 'off') + '">' + (potJ.active ? ('💶 ' + (status === 'absent' ? 'Absence : le pot ne bouge pas' : (unlocked ? 'Pot préservé aujourd\'hui' : '−' + fmtEuros(round2(potJ.daily)) + ' € du pot si non validée'))) : '💶 Argent de poche non réglé') + '</div>') + '</div>';
     if (status === 'termine') out += '<div class="jr-banner" style="margin-top:12px;background:#E7EEE1;border-color:#9DB894;color:#2C4432;">🎉 Bravo ! Toutes les tâches sont faites. Un parent peut maintenant valider la journée.</div>';
     if (status === 'valide') {
       out += '<div class="jr-banner" style="margin-top:12px;background:#E7EEE1;border-color:#9DB894;color:#2C4432;">✅ Journée validée par un parent.</div>';
@@ -9560,9 +9698,9 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += '<div style="font-size:14px;">' + (stats.val + stats.abs) + ' jour' + ((stats.val + stats.abs) > 1 ? 's' : '') + ' validé' + ((stats.val + stats.abs) > 1 ? 's' : '') + (stats.abs ? (' (dont ' + stats.abs + ' en semaine d\'absence)') : '') + ' sur ' + stats.dim + '</div>';
     if (jrIsAdult(pid)) {
       /* pas d'argent de poche pour un adulte */
-    } else if (stats.monthly > 0) {
-      out += '<div style="font-size:22px;font-weight:700;color:#3F5D46;margin:6px 0 2px;font-family:Fraunces,serif;">' + fmtEuros(stats.total) + ' €</div>';
-      out += '<div style="font-size:12.5px;color:#66735F;">Argent de poche du mois : ' + fmtEuros(round2(stats.monthly)) + ' € ÷ ' + stats.dim + ' jours = ' + fmtEuros(round2(stats.daily)) + ' € par jour validé</div>';
+    } else if (potJ.active) {
+      out += '<div style="font-size:22px;font-weight:700;color:#3F5D46;margin:6px 0 2px;font-family:Fraunces,serif;">' + fmtEuros(potJ.left) + ' € <span style="font-size:14px;font-weight:600;color:#66735F">restants sur ' + fmtEuros(round2(potJ.monthly)) + ' €</span></div>';
+      out += '<div style="font-size:12.5px;color:#66735F;">Le pot part plein et baisse de ' + fmtEuros(round2(potJ.daily)) + ' € par jour passé sans validation' + (potJ.lost ? ' · ' + potJ.lost + ' jour' + (potJ.lost > 1 ? 's' : '') + ' perdu' + (potJ.lost > 1 ? 's' : '') : '') + (potJ.abs ? ' · ' + potJ.abs + ' absence' + (potJ.abs > 1 ? 's' : '') + ' non comptée' + (potJ.abs > 1 ? 's' : '') : '') + '</div>';
     } else {
       out += '<div style="font-size:12.5px;color:#66735F;margin-top:4px;">L\'argent de poche mensuel n\'est pas encore réglé : un parent peut le définir dans ⚙️ Régler.</div>';
     }
