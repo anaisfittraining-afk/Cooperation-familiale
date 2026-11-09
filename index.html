@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-09-accueil-semaine';
+window.MH_BUILD_VERSION = '2026-11-09-fiche-enfant';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -4255,8 +4255,39 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       return '<div class="person-dot ' + (on ? 'on' : 'off') + '" style="--dot-color:' + p.color + '" onclick="trToggleSel(' + jsAttr(p.id) + ')"><span class="circ">' + (on ? '✓' : p.init) + '</span>' + esc(p.label) + '</div>';
     }).join('') + '</div>';
     out += '<div class="edit-panel-row"><label class="edit-date-label">Le</label><select id="tr-date" onchange="trSetDate(this.value)">' + opts + '</select></div>';
-    out += '<button class="edit-save" onclick="trConfirm()">✅ Confier cette tâche</button></div>';
+    out += '<button class="edit-save" onclick="trConfirm()">✅ Confier pour ce jour seulement</button>';
+    if (!TR_PANEL.fixed) {
+      out += '<div class="edit-date-label" style="margin:12px 0 4px;font-weight:700">— ou pour toujours —</div>';
+      out += '<button class="edit-save" style="background:#3F5D46" onclick="trAssignPermanent()">📌 Ajouter à leur fiche (tous les jours)</button>';
+      out += '<p class="points-note" style="margin:6px 0 0">La tâche quitte la liste d\'Aujourd\'hui et vit dans la fiche de la personne cochée. Elle compte pour débloquer les loisirs.</p>';
+    }
+    out += '</div>';
     return out;
+  }
+  // 📌 Ajouter la tâche à la fiche de la/des personne(s) cochée(s), pour tous les jours (t.onlyFor) — s'ajoute aux
+  // personnes déjà concernées. Même mécanisme que « Concerne » / Fiches enfants : la tâche quitte les listes
+  // générales d'Aujourd'hui et apparaît dans « Ma journée » / la fiche, comme indispensable.
+  function mhToast(msg) {
+    try {
+      var el = document.createElement('div');
+      el.textContent = msg;
+      el.style.cssText = 'position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#2C4432;color:#fff;padding:10px 16px;border-radius:14px;font-size:13.5px;font-weight:700;z-index:99999;max-width:86vw;text-align:center;box-shadow:0 4px 14px rgba(0,0,0,.25)';
+      document.body.appendChild(el); setTimeout(function() { el.remove(); }, 3200);
+    } catch (e) {}
+  }
+  function trAssignPermanent() {
+    if (!TR_PANEL) return;
+    var ids = Object.keys(TR_SEL).filter(function(k) { return TR_SEL[k]; });
+    if (!ids.length) { alert('Coche au moins une personne.'); return; }
+    var period = TR_PANEL.period, all = getTasksAll();
+    var t = (all[period] || []).filter(function(x) { return x.id === TR_PANEL.id; })[0]; if (!t) return;
+    var cur = (t.onlyFor && t.onlyFor.length && t.onlyFor.length < PERSONS.length) ? t.onlyFor.slice() : [];
+    ids.forEach(function(id) { if (cur.indexOf(id) < 0) cur.push(id); });
+    if (cur.length >= PERSONS.length) delete t.onlyFor; else t.onlyFor = cur;
+    saveTasksAll(all);
+    TR_PANEL = null; TR_SEL = {};
+    trRefresh(period);
+    mhToast('📌 « ' + t.text + ' » ajoutée à la fiche de ' + trPersonsLabel(ids));
   }
   function trConfirm() {
     if (!TR_PANEL) return;
