@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-09-fiche-enfant-4';
+window.MH_BUILD_VERSION = '2026-11-09-hebdo-jour-1';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -4277,7 +4277,8 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += '<button class="edit-save" onclick="trConfirm()">✅ Confier pour ce jour seulement</button>';
     if (!TR_PANEL.fixed) {
       out += '<div class="edit-date-label" style="margin:12px 0 4px;font-weight:700">— ou pour toujours —</div>';
-      out += '<button class="edit-save" style="background:#3F5D46" onclick="trAssignPermanent()">📌 Ajouter à leur fiche (tous les jours)</button>';
+      if (period === 'weekly') out += '<div class="edit-panel-row"><label class="edit-date-label">Quel jour ?</label><select id="tr-day">' + dayOptsHtml(t.onlyDay) + '</select></div>';
+      out += '<button class="edit-save" style="background:#3F5D46" onclick="trAssignPermanent()">📌 Ajouter à leur fiche' + (period === 'weekly' ? '' : ' (tous les jours)') + '</button>';
       out += '<p class="points-note" style="margin:6px 0 0">La tâche quitte la liste d\'Aujourd\'hui et vit dans la fiche de la personne cochée. Elle compte pour débloquer les loisirs.</p>';
     }
     out += '</div>';
@@ -4302,12 +4303,13 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var t = (all[period] || []).filter(function(x) { return x.id === TR_PANEL.id; })[0]; if (!t) return;
     var cur = (t.onlyFor && t.onlyFor.length && t.onlyFor.length < PERSONS.length) ? t.onlyFor.slice() : [];
     ids.forEach(function(id) { if (cur.indexOf(id) < 0) cur.push(id); });
+    if (period === 'weekly') { var dv = readDayVal('tr-day'); if (dv == null) delete t.onlyDay; else t.onlyDay = dv; }
     t.onlyFor = cur; t.essential = true; // même pour les 4 : la tâche vit dans leur fiche et compte pour les loisirs
     try { IMPERATIFS_TAB = ids[0]; } catch (e) {}
     saveTasksAll(all);
     TR_PANEL = null; TR_SEL = {};
     trRefresh(period);
-    mhToast('📌 « ' + t.text + ' » ajoutée à la fiche de ' + trPersonsLabel(ids));
+    mhToast('📌 « ' + t.text + ' » ajoutée à la fiche de ' + trPersonsLabel(ids) + (t.onlyDay != null ? ' (le ' + DAY_NAMES_FULL[t.onlyDay] + ')' : ''));
   }
   function trConfirm() {
     if (!TR_PANEL) return;
@@ -5834,7 +5836,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       ? PERSONS.some(function(p) { return countInArray(checkedBy, p.id) >= taskRepeat; })
       : checkedBy.length > 0;
     var badge = (t.pts != null) ? ' <span class="pts-badge">⭐ ' + t.pts + '</span>' : '';
-    if (taskIsPerso(t) && period !== 'argent') badge += ' <span class="repeat-badge" title="Rangée dans la fiche de ces personnes">📌 fiche : ' + esc(t.onlyFor.map(trPersonLabel).join(', ')) + '</span>';
+    if (taskIsPerso(t) && period !== 'argent') badge += ' <span class="repeat-badge" title="Rangée dans la fiche de ces personnes">📌 fiche : ' + esc(t.onlyFor.map(trPersonLabel).join(', ')) + (t.onlyDay != null ? ' · le ' + DAY_NAMES_FULL[t.onlyDay] : '') + '</span>';
     var repeatSuffix = REPEAT_SUFFIX[period] || '';
     var repeatBadge = taskRepeat > 1 ? ' <span class="repeat-badge">🔁 x' + taskRepeat + repeatSuffix + '</span>' : '';
     if (period === 'weekly' || period === 'monthly') repeatBadge += planBadgeHtml(period, t.id);
@@ -6342,7 +6344,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var out = [];
     ['daily', 'weekly', 'monthly', 'exceptional'].forEach(function(period) {
       (all[period] || []).forEach(function(t) {
-        var isPersonal = taskIsPerso(t) && t.onlyFor.indexOf(person.id) !== -1;
+        var isPersonal = taskIsPerso(t) && t.onlyFor.indexOf(person.id) !== -1 && (period !== 'weekly' || taskDayOk(t, todayViewDate()));
         if (isPersonal) out.push({ period: period, task: t });
       });
     });
@@ -6403,6 +6405,16 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     if (!t || !t.onlyFor || !t.onlyFor.length || t.onlyFor.length >= PERSONS.length) return false;
     return t.onlyFor.some(function(id) { try { return isHomeKid(id); } catch (e) { return false; } });
   }
+  // 📅 Tâche hebdo rangée dans la fiche pour UN jour précis de la semaine (ex. le mercredi) : t.onlyDay = 0..6 (0 = dimanche).
+  var DAY_NAMES_FULL = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  function weekdayOfISO(iso) { var q = String(iso).split('-').map(Number); return new Date(q[0], q[1] - 1, q[2]).getDay(); }
+  function taskDayOk(t, iso) { return !(t && t.onlyDay != null) || weekdayOfISO(iso) === t.onlyDay; }
+  function dayOptsHtml(sel) {
+    var out = '<option value=""' + (sel === '' || sel == null ? ' selected' : '') + '>Toute la semaine (à faire dans la semaine)</option>';
+    [1, 2, 3, 4, 5, 6, 0].forEach(function(d) { out += '<option value="' + d + '"' + (String(sel) === String(d) ? ' selected' : '') + '>Le ' + DAY_NAMES_FULL[d] + ' seulement</option>'; });
+    return out;
+  }
+  function readDayVal(id) { var el = document.getElementById(id); return (el && el.value !== '') ? parseInt(el.value, 10) : null; }
   function taskIsPersonalOnly(t) { return !!(t && (t.essential || taskIsChildAssigned(t))); }
   function trGivenOn(period, taskId, date) {
     return trGet().some(function(x) { return x.taskId === taskId && x.period === period && x.date === date && (x.persons || []).length; });
@@ -8758,6 +8770,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   function ficheAssignSyncSelectionToTask(taskId, fallbackPersonId) {
     var t = (getTasksAll()[FICHE_ASSIGN_PERIOD] || []).find(function(x) { return x.id === taskId; });
     FICHE_ASSIGN_SELECTED = {};
+    FICHE_ASSIGN_DAY = (t && t.onlyDay != null) ? String(t.onlyDay) : '';
     if (taskIsPerso(t)) {
       t.onlyFor.forEach(function(id) { if (jrPeople().some(function(p) { return p.id === id; })) FICHE_ASSIGN_SELECTED[id] = true; });
     }
@@ -8769,6 +8782,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     renderFichesHub();
   }
   var FICHE_ASSIGN_KEEP_TASK = false;
+  var FICHE_ASSIGN_DAY = '';
   function ficheAssignTaskChanged(taskId) {
     ficheAssignSyncSelectionToTask(taskId, FICHE_TAB);
     FICHE_ASSIGN_KEEP_TASK = true;
@@ -8786,7 +8800,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       var p = PERSONS.filter(function(pp) { return pp.id === id; })[0];
       return p ? p.label : id;
     });
-    return ' (perso : ' + labels.join(', ') + ')';
+    return ' (perso : ' + labels.join(', ') + (t.onlyDay != null ? ' · le ' + DAY_NAMES_FULL[t.onlyDay] : '') + ')';
   }
   function renderFicheAssignExistingForm(currentTabPerson) {
     var period = FICHE_ASSIGN_PERIOD;
@@ -8821,7 +8835,8 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       return '<div class="person-dot ' + (on ? 'on' : 'off') + '" style="--dot-color:' + p.color + '" onclick="toggleFicheAssignChild(' + jsAttr(p.id) + ')"><span class="circ">' + (on ? '✓' : p.init) + '</span>' + p.label + '</div>';
     }).join('') + '</div>';
     out += '<p class="edit-date-label" style="width:100%;font-weight:400;">Elle n\'apparaîtra plus que sur la ou les fiche(s) cochée(s) — les autres ne la verront plus tant qu\'elle reste perso.</p>';
-    out += '<label class="edit-date-label" style="width:100%;font-weight:700;display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="fiche-assign-ess" style="width:auto"> ⭐ Indispensable de la journée (débloque les loisirs)</label>';
+    if (period === 'weekly') out += '<div class="row1"><label class="edit-date-label" style="font-weight:700">📅 Quel jour ?</label><select id="fiche-assign-day" onchange="FICHE_ASSIGN_DAY=this.value">' + dayOptsHtml(FICHE_ASSIGN_DAY) + '</select></div>';
+    out += '<label class="edit-date-label" style="width:100%;font-weight:700;display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="fiche-assign-ess" style="width:auto"> ⭐ Indispensable (débloque les loisirs)</label>';
     out += '<input type="text" inputmode="numeric" autocomplete="off" id="fiche-assign-code" class="reset-code-input" placeholder="Code secret" onkeydown="if(event.key===\'Enter\')assignExistingTaskToFiche()">';
     out += '<div class="reset-code-error" id="fiche-assign-code-error" style="display:none;">❌ Code incorrect.</div>';
     out += '<button onclick="assignExistingTaskToFiche()">📋 Rendre perso</button>';
@@ -8848,6 +8863,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var t = (all[period] || []).find(function(x) { return x.id === taskId; });
     if (!t) return;
     t.onlyFor = selectedIds;
+    if (period === 'weekly') { var dv2 = readDayVal('fiche-assign-day'); if (dv2 == null) delete t.onlyDay; else t.onlyDay = dv2; } else delete t.onlyDay;
     try { IMPERATIFS_TAB = selectedIds[0]; } catch (e) {}
     var essBox = document.getElementById('fiche-assign-ess'); if (essBox && essBox.checked) t.essential = true; else delete t.essential;
     saveTasksAll(all);
@@ -8871,6 +8887,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     if (REPEAT_MAX[period]) {
       out += '<div class="row2"><label class="edit-date-label">Se répète</label><input type="number" id="fiche-repeat-' + pid + '" min="1" max="' + REPEAT_MAX[period] + '" value="1"><span class="edit-date-label">' + REPEAT_LABEL[period] + '</span></div>';
     }
+    if (period === 'weekly') out += '<div class="row1"><label class="edit-date-label" style="font-weight:700">📅 Quel jour ?</label><select id="fiche-day-' + pid + '">' + dayOptsHtml('') + '</select></div>';
     out += '<p class="edit-date-label" style="width:100%;font-weight:400;">Cette tâche n\'apparaîtra que sur la fiche de ' + esc(person.label) + '.</p>';
     out += '<label class="edit-date-label" style="width:100%;font-weight:700;display:flex;gap:8px;align-items:center;margin:8px 0"><input type="checkbox" id="fiche-ess-' + pid + '" style="width:auto"> ⭐ Indispensable de la journée (débloque les loisirs)</label>';
     out += '<input type="text" inputmode="numeric" autocomplete="off" id="fiche-code-' + pid + '" class="reset-code-input" placeholder="Code secret" onkeydown="if(event.key===\'Enter\')addFicheTask(' + jsAttr(pid) + ')">';
@@ -8898,6 +8915,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var ptsInput = document.getElementById('fiche-pts-' + personId);
     var task = { id: period[0] + Date.now(), text: text, grp: grp, order: Date.now(), onlyFor: [personId] };
     task.pts = Math.max(1, parseInt(ptsInput && ptsInput.value, 10) || 1);
+    if (period === 'weekly') { var dv3 = readDayVal('fiche-day-' + personId); if (dv3 != null) task.onlyDay = dv3; }
     var essBox2 = document.getElementById('fiche-ess-' + personId); if (essBox2 && essBox2.checked) task.essential = true;
     if (REPEAT_MAX[period]) {
       var repeatInput = document.getElementById('fiche-repeat-' + personId);
@@ -8998,10 +9016,11 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   // Les personnes qui ont une « Ma journée » : les enfants, et les adultes (parents) pour leurs propres indispensables
   function jrPeople() { return PERSONS.filter(function(p) { return p.role === 'enfant'; }).concat(PERSONS.filter(function(p) { return p.role === 'adulte'; })); }
   // ⭐ Indispensables de la journée : tâches attribuées dans la fiche (t.essential + onlyFor) — elles comptent pour débloquer les loisirs
-  function jrEssentialTasks(pid) {
+  function jrEssentialTasks(pid, date) {
     var out = [], all = getTasksAll();
     ['daily', 'weekly', 'monthly', 'exceptional'].forEach(function(period) {
       (all[period] || []).forEach(function(t) {
+        if (period === 'weekly' && date && !taskDayOk(t, date)) return;
         if (taskIsPersonalOnly(t) && t.onlyFor && t.onlyFor.indexOf(pid) >= 0) out.push({ id: 'ess:' + period + ':' + t.id, label: t.text, ess: { period: period, id: t.id, repeat: t.repeat > 1 ? t.repeat : 1 } });
       });
     });
@@ -9019,7 +9038,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   function jrTasks(o, pid, date) {
     var t = o.templates[pid] || (jrIsAdult(pid) ? [] : (o.templates._famille || JR_DEFAULT_TASKS));
-    var ess = jrEssentialTasks(pid);
+    var ess = jrEssentialTasks(pid, date);
     // Les tâches confiées pour UN jour (🤝) s'affichent dans la fiche (« Tâches confiées ») et rapportent des points ;
     // seules les tâches rangées dans la fiche (📌 / indispensables) comptent pour débloquer les loisirs.
     return t.map(function(x) { return { id: x.id, label: x.label }; }).concat(ess);
