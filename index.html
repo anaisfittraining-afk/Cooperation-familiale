@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-09-fiche-enfant';
+window.MH_BUILD_VERSION = '2026-11-09-fiche-enfant-4';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -4194,6 +4194,25 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   //    les coche comme d'habitude — ça passe par togglePerson, donc points et historique restent ceux de la maison.
   //  · « Ma semaine » : toutes les tâches de chaque jour de la semaine (programme), à qui elles sont, avec la date.
   // ═══════════════════════════════════════════════════════════════════════════
+  // 🔧 Plusieurs écrans (Aujourd'hui, Tâches, Fiches enfants, Ma journée) affichent les mêmes formulaires avec les
+  // mêmes identifiants : l'écran caché gardait une ancienne copie et getElementById lisait CETTE copie (mauvaise
+  // tâche, mauvais code, mauvaise date…) → rien ne s'enregistrait ou la tâche partait ailleurs. On lit désormais
+  // d'abord la copie de l'écran ouvert.
+  (function() {
+    var orig = document.getElementById.bind(document);
+    document.getElementById = function(id) {
+      var e = orig(id);
+      if (!e) return e;
+      try {
+        var v = document.querySelector('.view.active');
+        if (v && !v.contains(e)) {
+          var alt = v.querySelector('[id="' + String(id).replace(/"/g, '\\"') + '"]');
+          if (alt) return alt;
+        }
+      } catch (err) {}
+      return e;
+    };
+  })();
   var TR_PANEL = null, TR_SEL = {}, TR_DATE = '', SEM_OFFSET = 0, SEM_ADD = null;
   function trGet() { try { var a = JSON.parse(localStorage.getItem(TRANSFER_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function trSave(a) { localStorage.setItem(TRANSFER_KEY, JSON.stringify(a)); scheduleSyncPublish(); }
@@ -4283,7 +4302,8 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var t = (all[period] || []).filter(function(x) { return x.id === TR_PANEL.id; })[0]; if (!t) return;
     var cur = (t.onlyFor && t.onlyFor.length && t.onlyFor.length < PERSONS.length) ? t.onlyFor.slice() : [];
     ids.forEach(function(id) { if (cur.indexOf(id) < 0) cur.push(id); });
-    if (cur.length >= PERSONS.length) delete t.onlyFor; else t.onlyFor = cur;
+    t.onlyFor = cur; t.essential = true; // même pour les 4 : la tâche vit dans leur fiche et compte pour les loisirs
+    try { IMPERATIFS_TAB = ids[0]; } catch (e) {}
     saveTasksAll(all);
     TR_PANEL = null; TR_SEL = {};
     trRefresh(period);
@@ -5814,6 +5834,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       ? PERSONS.some(function(p) { return countInArray(checkedBy, p.id) >= taskRepeat; })
       : checkedBy.length > 0;
     var badge = (t.pts != null) ? ' <span class="pts-badge">⭐ ' + t.pts + '</span>' : '';
+    if (taskIsPerso(t) && period !== 'argent') badge += ' <span class="repeat-badge" title="Rangée dans la fiche de ces personnes">📌 fiche : ' + esc(t.onlyFor.map(trPersonLabel).join(', ')) + '</span>';
     var repeatSuffix = REPEAT_SUFFIX[period] || '';
     var repeatBadge = taskRepeat > 1 ? ' <span class="repeat-badge">🔁 x' + taskRepeat + repeatSuffix + '</span>' : '';
     if (period === 'weekly' || period === 'monthly') repeatBadge += planBadgeHtml(period, t.id);
@@ -6321,7 +6342,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var out = [];
     ['daily', 'weekly', 'monthly', 'exceptional'].forEach(function(period) {
       (all[period] || []).forEach(function(t) {
-        var isPersonal = t.onlyFor && t.onlyFor.length && t.onlyFor.length < PERSONS.length && t.onlyFor.indexOf(person.id) !== -1;
+        var isPersonal = taskIsPerso(t) && t.onlyFor.indexOf(person.id) !== -1;
         if (isPersonal) out.push({ period: period, task: t });
       });
     });
@@ -6373,6 +6394,11 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   // ── Tâches données à un enfant : elles quittent les listes générales d'Aujourd'hui et vivent dans la fiche /
   //    « Ma journée » de l'enfant, où elles comptent comme indispensables (elles débloquent les loisirs). ──
+  // Une tâche « perso » = rangée dans la fiche de certaines personnes : soit réservée à une partie de la famille,
+  // soit donnée à TOUT LE MONDE comme indispensable (ex. « Ranger sa chambre » dans la fiche des 4).
+  function taskIsPerso(t) {
+    return !!(t && t.onlyFor && t.onlyFor.length && (t.onlyFor.length < PERSONS.length || t.essential));
+  }
   function taskIsChildAssigned(t) {
     if (!t || !t.onlyFor || !t.onlyFor.length || t.onlyFor.length >= PERSONS.length) return false;
     return t.onlyFor.some(function(id) { try { return isHomeKid(id); } catch (e) { return false; } });
@@ -8725,13 +8751,15 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   var FICHE_ASSIGN_SELECTED = {}; // { personId: true } — enfants actuellement cochés
   function ficheAssignFirstTaskId(period) {
     var tasks = getTasksAll()[period] || [];
-    return tasks.length ? tasks.slice().sort(function(a, b) { return (a.order || 0) - (b.order || 0); })[0].id : null;
+    var sorted = tasks.slice().sort(function(a, b) { return (a.order || 0) - (b.order || 0); });
+    var libre = sorted.filter(function(t) { return !taskIsPerso(t); })[0];
+    return sorted.length ? (libre || sorted[0]).id : null;
   }
   function ficheAssignSyncSelectionToTask(taskId, fallbackPersonId) {
     var t = (getTasksAll()[FICHE_ASSIGN_PERIOD] || []).find(function(x) { return x.id === taskId; });
     FICHE_ASSIGN_SELECTED = {};
-    if (t && t.onlyFor && t.onlyFor.length && t.onlyFor.length < PERSONS.length) {
-      t.onlyFor.forEach(function(id) { if (ficheChildren().some(function(p) { return p.id === id; })) FICHE_ASSIGN_SELECTED[id] = true; });
+    if (taskIsPerso(t)) {
+      t.onlyFor.forEach(function(id) { if (jrPeople().some(function(p) { return p.id === id; })) FICHE_ASSIGN_SELECTED[id] = true; });
     }
     if (!Object.keys(FICHE_ASSIGN_SELECTED).length && fallbackPersonId) FICHE_ASSIGN_SELECTED[fallbackPersonId] = true;
   }
@@ -8740,17 +8768,20 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     ficheAssignSyncSelectionToTask(ficheAssignFirstTaskId(period), FICHE_TAB);
     renderFichesHub();
   }
+  var FICHE_ASSIGN_KEEP_TASK = false;
   function ficheAssignTaskChanged(taskId) {
     ficheAssignSyncSelectionToTask(taskId, FICHE_TAB);
+    FICHE_ASSIGN_KEEP_TASK = true;
     renderFichesHub();
   }
   function toggleFicheAssignChild(personId) {
     if (FICHE_ASSIGN_SELECTED[personId]) delete FICHE_ASSIGN_SELECTED[personId];
     else FICHE_ASSIGN_SELECTED[personId] = true;
+    FICHE_ASSIGN_KEEP_TASK = true;
     renderFichesHub();
   }
   function taskOnlyForLabel(t) {
-    if (!t.onlyFor || !t.onlyFor.length || t.onlyFor.length >= PERSONS.length) return '';
+    if (!taskIsPerso(t)) return '';
     var labels = t.onlyFor.map(function(id) {
       var p = PERSONS.filter(function(pp) { return pp.id === id; })[0];
       return p ? p.label : id;
@@ -8773,11 +8804,17 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       out += '</div>';
       return out;
     }
-    var selectedTaskId = document.getElementById('fiche-assign-task') ? document.getElementById('fiche-assign-task').value : tasks[0].id;
-    if (!tasks.some(function(t) { return t.id === selectedTaskId; })) selectedTaskId = tasks[0].id;
-    out += '<div class="row1"><select id="fiche-assign-task" onchange="ficheAssignTaskChanged(this.value)">' + tasks.map(function(t) {
-      return '<option value="' + esc(t.id) + '"' + (t.id === selectedTaskId ? ' selected' : '') + '>' + esc(t.text + taskOnlyForLabel(t)) + '</option>';
-    }).join('') + '</select></div>';
+    // Les tâches pas encore perso en premier (à rendre perso), puis, à part, celles qui le sont déjà :
+    // une tâche qu'on vient de rendre perso ne reste donc plus sélectionnée / en tête de liste.
+    var isPerso = taskIsPerso;
+    var libres = tasks.filter(function(t) { return !isPerso(t); }), deja = tasks.filter(isPerso);
+    var selectedTaskId = (FICHE_ASSIGN_KEEP_TASK && document.getElementById('fiche-assign-task')) ? document.getElementById('fiche-assign-task').value : '';
+    FICHE_ASSIGN_KEEP_TASK = false;
+    if (!tasks.some(function(t) { return t.id === selectedTaskId; })) selectedTaskId = (libres[0] || tasks[0]).id;
+    var optHtml = function(t) { return '<option value="' + esc(t.id) + '"' + (t.id === selectedTaskId ? ' selected' : '') + '>' + esc(t.text + taskOnlyForLabel(t)) + '</option>'; };
+    out += '<div class="row1"><select id="fiche-assign-task" onchange="ficheAssignTaskChanged(this.value)">' +
+      (libres.length ? '<optgroup label="À rendre perso">' + libres.map(optHtml).join('') + '</optgroup>' : '') +
+      (deja.length ? '<optgroup label="Déjà perso (pour modifier)">' + deja.map(optHtml).join('') + '</optgroup>' : '') + '</select></div>';
     out += '<p class="edit-date-label" style="width:100%;font-weight:400;">Pour :</p>';
     out += '<div class="dots-row">' + children.map(function(p) {
       var on = !!FICHE_ASSIGN_SELECTED[p.id];
@@ -8811,6 +8848,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var t = (all[period] || []).find(function(x) { return x.id === taskId; });
     if (!t) return;
     t.onlyFor = selectedIds;
+    try { IMPERATIFS_TAB = selectedIds[0]; } catch (e) {}
     var essBox = document.getElementById('fiche-assign-ess'); if (essBox && essBox.checked) t.essential = true; else delete t.essential;
     saveTasksAll(all);
     if (codeInput) codeInput.value = '';
@@ -8982,7 +9020,8 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   function jrTasks(o, pid, date) {
     var t = o.templates[pid] || (jrIsAdult(pid) ? [] : (o.templates._famille || JR_DEFAULT_TASKS));
     var ess = jrEssentialTasks(pid);
-    if (date) jrGivenTasks(pid, date).forEach(function(g) { if (!ess.some(function(e) { return e.id === g.id; })) ess.push(g); });
+    // Les tâches confiées pour UN jour (🤝) s'affichent dans la fiche (« Tâches confiées ») et rapportent des points ;
+    // seules les tâches rangées dans la fiche (📌 / indispensables) comptent pour débloquer les loisirs.
     return t.map(function(x) { return { id: x.id, label: x.label }; }).concat(ess);
   }
   function essChecksFor(period, date) {
