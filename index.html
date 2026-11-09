@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-09-pot-plein-3';
+window.MH_BUILD_VERSION = '2026-11-09-annuler-assign-1';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -4811,7 +4811,88 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   function saveTasksAll(t) {
     try { reconcileLegacyArgentOnRateChange(t); } catch (e) {}
+    var prevAll = null; try { prevAll = JSON.parse(localStorage.getItem(TASKS_KEY) || 'null'); } catch (e) {}
     localStorage.setItem(TASKS_KEY, JSON.stringify(t)); scheduleSyncPublish();
+    try { if (prevAll && !ASSIGN_UNDOING) assignRecord(prevAll, t); } catch (e) {}
+  }
+  // ↩︎ ANNULER UNE ATTRIBUTION : chaque changement de « qui voit la tâche » (fiche d'un enfant, indispensable, jour)
+  // est noté (30 derniers) avec l'état d'AVANT, pour pouvoir revenir en arrière en un clic en cas d'erreur.
+  var ASSIGN_JOURNAL_KEY = nsKey('mh_assign_journal_v1');
+  var ASSIGN_UNDOING = false;
+  function assignJournalGet() { try { return JSON.parse(localStorage.getItem(ASSIGN_JOURNAL_KEY) || '[]') || []; } catch (e) { return []; } }
+  function assignJournalSave(l) { try { localStorage.setItem(ASSIGN_JOURNAL_KEY, JSON.stringify(l.slice(-30))); scheduleSyncPublish(); } catch (e) {} }
+  function assignSig(t) { return JSON.stringify([(t.onlyFor && t.onlyFor.length) ? t.onlyFor : null, t.onlyDay == null ? null : t.onlyDay, !!t.essential]); }
+  function assignWho(t) {
+    if (!t.onlyFor || !t.onlyFor.length) return 'tout le monde';
+    return t.onlyFor.map(function(id) { var p = PERSONS.filter(function(x) { return x.id === id; })[0]; return p ? p.label : id; }).join(', ');
+  }
+  function assignRecord(prevAll, newAll) {
+    var entries = [];
+    ['daily', 'weekly', 'monthly', 'exceptional'].forEach(function(period) {
+      var prev = {}; (prevAll[period] || []).forEach(function(t) { prev[t.id] = t; });
+      (newAll[period] || []).forEach(function(t) {
+        var p = prev[t.id];
+        if (!p) { if (t.onlyFor && t.onlyFor.length) entries.push({ period: period, taskId: t.id, text: t.text, before: null, desc: 'ajoutée pour ' + assignWho(t) }); return; }
+        if (assignSig(p) === assignSig(t)) return;
+        entries.push({ period: period, taskId: t.id, text: t.text,
+          before: { onlyFor: (p.onlyFor && p.onlyFor.length) ? p.onlyFor.slice() : null, onlyDay: p.onlyDay == null ? null : p.onlyDay, essential: !!p.essential },
+          desc: 'était pour ' + assignWho(p) + (p.essential ? ' ⭐' : '') + ' → maintenant pour ' + assignWho(t) + (t.essential ? ' ⭐' : '') });
+      });
+    });
+    if (!entries.length) return;
+    var j = assignJournalGet(), now = Date.now();
+    entries.forEach(function(e, i) { e.id = 'a' + now + '-' + i; e.at = now; j.push(e); });
+    assignJournalSave(j);
+    assignUndoToast(entries[entries.length - 1]);
+  }
+  function assignUndoToast(e) {
+    try {
+      var old = document.getElementById('assignUndoToast'); if (old) old.remove();
+      var el = document.createElement('div'); el.id = 'assignUndoToast';
+      el.style.cssText = 'position:fixed;left:50%;bottom:92px;transform:translateX(-50%);background:#2C4432;color:#fff;padding:10px 14px;border-radius:14px;font-size:13.5px;font-weight:700;z-index:99999;max-width:92%;display:flex;gap:12px;align-items:center;box-shadow:0 6px 20px rgba(0,0,0,.3)';
+      var sp = document.createElement('span'); sp.textContent = '« ' + e.text + ' » : attribution enregistrée'; el.appendChild(sp);
+      var b = document.createElement('button'); b.textContent = '↩︎ Annuler';
+      b.style.cssText = 'border:none;background:#fff;color:#2C4432;font-weight:800;border-radius:10px;padding:6px 10px;cursor:pointer;font-family:inherit';
+      b.onclick = function() { el.remove(); assignUndo(e.id); };
+      el.appendChild(b); document.body.appendChild(el);
+      setTimeout(function() { if (el.parentNode) el.remove(); }, 9000);
+    } catch (x) {}
+  }
+  function assignUndo(id) {
+    jrAskParent(function() {
+      var j = assignJournalGet(), e = j.filter(function(x) { return x.id === id; })[0];
+      if (!e) return;
+      var all = getTasksAll(), list = all[e.period] || [], t = list.filter(function(x) { return x.id === e.taskId; })[0];
+      if (t) {
+        if (e.before === null) all[e.period] = list.filter(function(x) { return x.id !== e.taskId; });   // la tâche avait été créée par cette attribution
+        else {
+          if (e.before.onlyFor) t.onlyFor = e.before.onlyFor.slice(); else delete t.onlyFor;
+          if (e.before.onlyDay != null) t.onlyDay = e.before.onlyDay; else delete t.onlyDay;
+          if (e.before.essential) t.essential = true; else delete t.essential;
+        }
+        ASSIGN_UNDOING = true; try { saveTasksAll(all); } finally { ASSIGN_UNDOING = false; }
+      }
+      assignJournalSave(j.filter(function(x) { return x.id !== id; }));
+      try { refreshAffected(e.period); } catch (x) {}
+      try { var jv = document.getElementById('view-journee'); if (jv && jv.classList.contains('active')) renderJourneeView(); } catch (x) {}
+      try { renderFichesHub(); } catch (x) {}
+      mhToast('↩︎ Attribution annulée : « ' + e.text + ' »');
+    });
+  }
+  function assignAgo(at) {
+    var m = Math.round((Date.now() - at) / 60000);
+    if (m < 1) return 'à l\'instant'; if (m < 60) return 'il y a ' + m + ' min';
+    var h = Math.round(m / 60); if (h < 24) return 'il y a ' + h + ' h';
+    return 'il y a ' + Math.round(h / 24) + ' j';
+  }
+  function assignJournalHtml() {
+    var j = assignJournalGet().slice().reverse().slice(0, 12);
+    if (!j.length) return '';
+    var out = '<details class="assign-journal" style="margin:14px 0 4px"><summary style="cursor:pointer;font-weight:700;font-size:13.5px;color:var(--muted)">↩︎ Annuler une attribution (' + j.length + ' dernière' + (j.length > 1 ? 's' : '') + ')</summary>';
+    j.forEach(function(e) {
+      out += '<div class="split-row" style="align-items:center;gap:8px"><span style="flex:1;font-size:13px"><b>' + esc(e.text) + '</b><br><span style="color:var(--muted)">' + esc(e.desc) + ' · ' + assignAgo(e.at) + '</span></span><button class="detail-toggle-btn" style="width:auto;margin:0;padding:6px 10px" onclick="assignUndo(' + jsAttr(e.id) + ')">↩︎ Annuler</button></div>';
+    });
+    return out + '</details>';
   }
   // Quand le tarif d'une tâche "Ça rapporte" change, une somme figée (ancien format, d'avant le calcul
   // en direct — voir argentMonthPointsFor) ne bougeait pas, ce qui donnait l'impression que rien ne se
@@ -9409,6 +9490,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
 
     out += renderFicheAssignExistingForm(person);
     out += renderFicheAddTaskForm(person);
+    if (!MEMBER_MODE) out += assignJournalHtml();
     return out;
   }
   function renderFichesHub() {
@@ -9664,7 +9746,8 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += '<div class="jr-card"><div style="font-weight:700;font-size:16px;margin-bottom:2px;">' + esc(person.label) + ' — ' + (date === today ? 'aujourd\'hui' : esc(longDate)) + '</div>';
     if (date === today) out += '<div style="font-size:12.5px;color:#66735F;">' + esc(longDate) + '</div>';
     if (status === 'absent') {
-      out += '<div class="jr-banner" style="margin-top:10px;">🏠 Semaine chez l\'autre parent : la journée est validée automatiquement. Rien à cocher !</div>';
+      out += '<div class="jr-banner" style="margin-top:10px;">🏠 ' + esc(person.label) + ' est marquée « absente » cette semaine (chez l\'autre parent) : la journée est validée automatiquement, aucune tâche à cocher.</div>';
+      if (!MEMBER_MODE) out += '<button class="jr-btn" style="margin-top:10px" onclick="jrMarkPresent(' + jsAttr(pid) + ',' + jsAttr(date) + ')">✅ ' + esc(person.label) + ' est bien là cette semaine</button>';
     } else {
       out += '<div class="jr-bar"><div style="width:' + (dn.total ? Math.round(dn.n * 100 / dn.total) : 0) + '%"></div></div>';
       out += '<div style="font-size:12.5px;color:#66735F;margin:-8px 0 10px;">' + dn.n + ' / ' + dn.total + ' tâches faites</div>';
@@ -9710,6 +9793,16 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var jrStrip = el.querySelector('.jr-strip'); if (jrStrip) jrStrip.scrollLeft = jrStrip.scrollWidth;
   }
   // ── Réglages (parents) ──
+  // La semaine était marquée « absente » (garde alternée) alors que l'enfant est là : on la remet « présente ».
+  function jrMarkPresent(pid, date) {
+    jrAskParent(function() {
+      var all = getChildPresenceAll(), wk = isoWeekKeyForDate(date);
+      if (!all[pid]) all[pid] = {};
+      if (custodyAbsentWeek(pid, wk)) all[pid][wk] = 'present'; else delete all[pid][wk];
+      saveChildPresenceAll(all);
+      renderJourneeView(); try { renderPoints(); } catch (e) {}
+    });
+  }
   function jrOpenSettings() { jrAskParent(function() { JR_SETTINGS = true; renderJourneeView(); }); }
   function jrCloseSettings() { JR_SETTINGS = false; renderJourneeView(); }
   function jrSettingsHtml(o, person) {
