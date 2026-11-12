@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-09-monargent-gestion-1';
+window.MH_BUILD_VERSION = '2026-11-13-recettes-3';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -466,6 +466,36 @@ window.MH_BUILD_VERSION = '2026-11-09-monargent-gestion-1';
   .meal-pending button { font: inherit; font-size: 13px; font-weight: 700; padding: 9px 14px; border-radius: 10px; border: none; cursor: pointer; background: #3F5D46; color: #fff; }
   .meal-pending button.ghost { background: #fff; color: #26312A; border: 1.5px solid var(--border); }
   .meal-sec { font-size: 11px; font-weight: 800; letter-spacing: .5px; text-transform: uppercase; color: var(--muted); margin: 16px 0 8px; }
+
+  /* 📚 Recettes (bloc repas · courses · recettes, identique dans les deux applis) */
+  .kit-rgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 10px; }
+  .kit-rc { background: var(--card); border: 1px solid var(--border); border-radius: 14px; overflow: hidden; cursor: pointer; display: flex; flex-direction: column; box-shadow: 0 1px 2px rgba(38,49,42,.04); }
+  .kit-rc:active { transform: scale(.985); }
+  .kit-rc .th { aspect-ratio: 4/3; background: #F1EADA; display: flex; align-items: center; justify-content: center; overflow: hidden; }
+  .kit-rc .th img { width: 100%; height: 100%; object-fit: cover; display: block; }
+  .kit-rc .th .em { font-size: 38px; }
+  .kit-rc .tx { padding: 9px 11px 11px; display: flex; flex-direction: column; gap: 3px; }
+  .kit-rc .tx b { font-size: 13.5px; line-height: 1.25; }
+  .kit-rc .tx span { font-size: 11px; color: var(--muted); font-weight: 600; }
+  .kit-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
+  .kit-chips button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: #fff; color: var(--text, #26312A); cursor: pointer; width: auto; margin: 0; }
+  .kit-chips button.on { background: #3F5D46; color: #fff; border-color: #3F5D46; }
+  .kit-modal { position: fixed; inset: 0; background: rgba(38,49,42,.55); z-index: 9999; display: flex; align-items: flex-end; justify-content: center; }
+  .kit-sheet { position: relative; background: var(--bg, #F7F1E6); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 0 18px 28px; -webkit-overflow-scrolling: touch; }
+  .kit-sheet h2 { font-size: 22px; margin: 16px 0 4px; line-height: 1.2; }
+  .kit-ph { display: block; width: calc(100% + 36px); margin: 0 -18px; max-height: 280px; object-fit: cover; border-radius: 22px 22px 0 0; }
+  .kit-x { position: sticky; top: 10px; float: right; margin: 10px 0 0 8px; width: 34px; height: 34px; border-radius: 50%; border: none; background: rgba(255,255,255,.92); box-shadow: 0 1px 6px rgba(0,0,0,.2); font-size: 15px; cursor: pointer; z-index: 2; }
+  .kit-meta { font-size: 12.5px; font-weight: 700; color: var(--muted); margin-bottom: 8px; }
+  .kit-note { font-size: 13.5px; color: var(--text, #26312A); background: #FFF7E0; border: 1px solid #F0DDA6; border-radius: 12px; padding: 9px 12px; }
+  .kit-ings { list-style: none; margin: 0; padding: 0; }
+  .kit-ings li { padding: 7px 2px; border-bottom: 1px dashed var(--border); font-size: 14px; }
+  .kit-por { display: flex; align-items: center; gap: 12px; margin: 4px 0 6px; font-size: 14px; font-weight: 700; }
+  .kit-por span { flex: 1; }
+  .kit-por button { width: 38px; height: 38px; border-radius: 50%; border: 1.5px solid #3F5D46; background: #fff; color: #3F5D46; font-size: 22px; font-weight: 700; line-height: 1; cursor: pointer; padding: 0; }
+  .kit-por b { min-width: 28px; text-align: center; font-size: 18px; }
+  .kit-por-hint { font-size: 12px; color: var(--muted); margin: 0 0 6px; }
+  .kit-steps { margin: 0; padding-left: 22px; }
+  .kit-steps li { margin-bottom: 9px; font-size: 14.5px; line-height: 1.5; }
 
   .add-panel {
     background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 14px; margin-top: 14px; margin-bottom: 18px;
@@ -1508,19 +1538,7 @@ window.MH_BUILD_VERSION = '2026-11-09-monargent-gestion-1';
     <div class="section-head">
       <h2>🛒 Courses &amp; repas</h2>
     </div>
-    <div class="mh-seg" id="coursesTabs"></div>
-    <div id="courses-pane-list">
-    <div class="add-panel">
-      <div class="row1">
-        <input type="text" id="courseInputText" placeholder="Ex : Lait, pommes, éponges…" onkeydown="if(event.key==='Enter')addCourseItem()">
-      </div>
-      <select id="courseInputCat"></select>
-      <button onclick="addCourseItem()">➕ Ajouter à la liste</button>
-    </div>
-    <div id="list-courses"></div>
-    <button class="clear-done-btn" onclick="clearDoneCourses()">🗑️ Vider les articles cochés</button>
-    </div>
-    <div id="courses-pane-meals" style="display:none"></div>
+    <div id="kit-root"></div>
   </div>
 
   <div class="view" id="view-malus">
@@ -1733,11 +1751,16 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var h = mhAccHash(code), done = false;
     var to = setTimeout(function() { if (!done) { done = true; showErr('Connexion trop lente. Vérifie ta connexion internet et réessaie.'); } }, 15000);
     function fin(fn) { if (done) return; done = true; clearTimeout(to); fn(); }
-    db.ref('epanouissement_global/access_index/' + h).once('value').then(function(sn) {
-      var e0 = sn.val();
-      if (e0 && e0.client) return e0;
-      // pas un code de cliente : est-ce le code d'un membre de la famille (enfant) ?
-      return db.ref('epanouissement_global/mh_member_access/' + h).once('value').then(function(s2) { var m = s2.val(); return (m && m.member) ? m : null; });
+    // 1) code « co-NAÎTRE son foyer » créé depuis la fiche cliente (foyer_access_index) ; 2) ancien code partagé avec co-NAÎTRE (access_index, toujours accepté) ; 3) code d'un membre de la famille (enfant)
+    db.ref('epanouissement_global/foyer_access_index/' + h).once('value').then(function(sf) {
+      var f0 = sf.val();
+      if (f0 && f0.client) return f0;
+      return db.ref('epanouissement_global/access_index/' + h).once('value').then(function(sn) {
+        var e0 = sn.val();
+        if (e0 && e0.client) return e0;
+        // pas un code de cliente : est-ce le code d'un membre de la famille (enfant) ?
+        return db.ref('epanouissement_global/mh_member_access/' + h).once('value').then(function(s2) { var m = s2.val(); return (m && m.member) ? m : null; });
+      });
     }).then(function(e) {
       if (!e || !(e.client || e.member)) { fin(function() { fails.push(Date.now()); sv('mh_gate_fail', JSON.stringify(fails)); showErr('Ce code n\'est pas reconnu. Vérifie-le ou redemande-le à ta coach.'); }); return; }
       if (e.active === false) { fin(function() { showErr('Ce code n\'est plus valable. Demande-en un nouveau à ta coach.'); }); return; }
@@ -3048,7 +3071,9 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       try {
         var tr = JSON.parse(localStorage.getItem('mh_gate_v1') || 'null');
         if (tr && tr.h) {
-          fbDB.ref('epanouissement_global/access_index/' + tr.h).once('value').then(function(sn) {
+          fbDB.ref('epanouissement_global/foyer_access_index/' + tr.h).once('value').then(function(sf) {
+            return sf.val() ? sf : fbDB.ref('epanouissement_global/access_index/' + tr.h).once('value');
+          }).then(function(sn) {
             var e = sn.val();
             if (e && e.active !== false) return;
             try { localStorage.removeItem('mh_gate_v1'); } catch (e2) {}
@@ -6783,13 +6808,15 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     });
   }
 
+  // ═════ BLOC REPAS · COURSES · RECETTES (code identique dans l'appli foyer et dans co-NAÎTRE — modifier les deux ensemble) ═════
   // ── Liste de courses ──
 
   // ═══════════════ 🍽️ REPAS DE LA SEMAINE → ingrédients dans la liste de courses ═══════════════
   // Chacun propose un repas (boîte à idées de la semaine) ; on le place sur un jour (midi / soir) et ses
   // ingrédients s'ajoutent tout seuls à la liste de courses (quantités additionnées s'il y en a déjà).
   // Recettes : un petit livre intégré (pour 4 personnes) + celles qu'on mémorise soi-même.
-  var MEAL_BOOK = [["Lasagnes","🍝",[["400 g","Viande hachée","boucherie"],["12 feuilles","Pâtes à lasagnes","epicerie"],["500 g","Sauce tomate","epicerie"],["1","Oignon","fruits"],["50 cl","Lait","cremerie"],["40 g","Beurre","cremerie"],["40 g","Farine","epicerie"],["150 g","Gruyère râpé","cremerie"]]],["Spaghettis bolognaise","🍝",[["500 g","Spaghettis","epicerie"],["400 g","Viande hachée","boucherie"],["400 g","Tomates concassées","epicerie"],["1","Oignon","fruits"],["2","Carottes","fruits"],["100 g","Gruyère râpé","cremerie"]]],["Pâtes carbonara","🍝",[["500 g","Pâtes","epicerie"],["200 g","Lardons","boucherie"],["20 cl","Crème fraîche","cremerie"],["100 g","Gruyère râpé","cremerie"]]],["Pâtes au saumon","🍝",[["500 g","Pâtes","epicerie"],["4 tranches","Saumon fumé","boucherie"],["20 cl","Crème fraîche","cremerie"],["1","Citron","fruits"]]],["Gratin de pâtes jambon-fromage","🧀",[["400 g","Coquillettes","epicerie"],["4 tranches","Jambon","boucherie"],["20 cl","Crème fraîche","cremerie"],["150 g","Gruyère râpé","cremerie"]]],["Gratin dauphinois","🥔",[["1 kg","Pommes de terre","fruits"],["40 cl","Crème fraîche","cremerie"],["25 cl","Lait","cremerie"],["1","Ail","fruits"],["100 g","Gruyère râpé","cremerie"]]],["Hachis parmentier","🥔",[["500 g","Viande hachée","boucherie"],["1 kg","Pommes de terre","fruits"],["1","Oignon","fruits"],["20 cl","Lait","cremerie"],["30 g","Beurre","cremerie"],["100 g","Gruyère râpé","cremerie"]]],["Tartiflette","🧀",[["1 kg","Pommes de terre","fruits"],["1","Reblochon","cremerie"],["200 g","Lardons","boucherie"],["2","Oignons","fruits"],["20 cl","Crème fraîche","cremerie"]]],["Raclette","🧀",[["600 g","Fromage à raclette","cremerie"],["1 kg","Pommes de terre","fruits"],["400 g","Charcuterie","boucherie"],["","Bocal de cornichons","epicerie"]]],["Poulet rôti et pommes de terre","🍗",[["1","Poulet entier","boucherie"],["1 kg","Pommes de terre","fruits"],["1","Oignon","fruits"]]],["Poulet au curry et riz","🍛",[["600 g","Blanc de poulet","boucherie"],["40 cl","Lait de coco","epicerie"],["1","Oignon","fruits"],["300 g","Riz","epicerie"],["","Curry","epicerie"]]],["Brochettes de poulet et riz","🍢",[["600 g","Blanc de poulet","boucherie"],["2","Poivrons","fruits"],["1","Oignon","fruits"],["300 g","Riz","epicerie"]]],["Riz cantonais","🍚",[["300 g","Riz","epicerie"],["4","Oeufs","cremerie"],["4 tranches","Jambon","boucherie"],["200 g","Petits pois","epicerie"],["2","Carottes","fruits"]]],["Quiche lorraine","🥧",[["1","Pâte brisée","cremerie"],["200 g","Lardons","boucherie"],["3","Oeufs","cremerie"],["20 cl","Crème fraîche","cremerie"],["100 g","Gruyère râpé","cremerie"]]],["Croque-monsieur","🥪",[["8 tranches","Pain de mie","boulangerie"],["4 tranches","Jambon","boucherie"],["150 g","Gruyère râpé","cremerie"],["1","Salade","fruits"]]],["Pizza maison","🍕",[["1","Pâte à pizza","cremerie"],["200 g","Sauce tomate","epicerie"],["200 g","Mozzarella","cremerie"],["4 tranches","Jambon","boucherie"],["200 g","Champignons","fruits"]]],["Crêpes","🥞",[["250 g","Farine","epicerie"],["4","Oeufs","cremerie"],["50 cl","Lait","cremerie"],["50 g","Beurre","cremerie"],["","Sucre","epicerie"],["","Pâte à tartiner","epicerie"]]],["Galettes complètes","🥞",[["8","Galettes de blé noir","cremerie"],["4","Oeufs","cremerie"],["4 tranches","Jambon","boucherie"],["150 g","Gruyère râpé","cremerie"]]],["Soupe de légumes","🥣",[["1 kg","Légumes pour soupe","fruits"],["1","Oignon","fruits"],["","Cube de bouillon","epicerie"],["1","Pain","boulangerie"]]],["Burgers maison","🍔",[["4","Pains à burger","boulangerie"],["4","Steaks hachés","boucherie"],["4 tranches","Cheddar","cremerie"],["1","Salade","fruits"],["2","Tomates","fruits"],["1","Oignon","fruits"],["800 g","Frites","epicerie"]]],["Steak et frites","🥩",[["4","Steaks","boucherie"],["800 g","Frites","epicerie"],["1","Salade","fruits"]]],["Saumon et riz","🐟",[["4","Pavés de saumon","boucherie"],["300 g","Riz","epicerie"],["1","Citron","fruits"],["1","Brocoli","fruits"]]],["Poisson pané et purée","🐟",[["8","Poissons panés","boucherie"],["1 kg","Pommes de terre","fruits"],["20 cl","Lait","cremerie"],["30 g","Beurre","cremerie"]]],["Chili con carne","🌶️",[["500 g","Viande hachée","boucherie"],["1 boîte","Haricots rouges","epicerie"],["400 g","Tomates concassées","epicerie"],["1","Oignon","fruits"],["300 g","Riz","epicerie"]]],["Tacos et fajitas","🌮",[["8","Tortillas","epicerie"],["400 g","Blanc de poulet","boucherie"],["2","Poivrons","fruits"],["1","Oignon","fruits"],["150 g","Fromage râpé","cremerie"],["20 cl","Crème fraîche","cremerie"]]],["Boulettes sauce tomate","🍝",[["500 g","Viande hachée","boucherie"],["500 g","Pâtes","epicerie"],["500 g","Sauce tomate","epicerie"],["1","Oeuf","cremerie"],["","Chapelure","epicerie"]]],["Gratin de chou-fleur","🥦",[["1","Chou-fleur","fruits"],["20 cl","Crème fraîche","cremerie"],["150 g","Gruyère râpé","cremerie"]]],["Omelette et salade","🍳",[["8","Oeufs","cremerie"],["1","Salade","fruits"],["100 g","Gruyère râpé","cremerie"],["1","Pain","boulangerie"]]],["Blanquette de veau","🍲",[["800 g","Veau à blanquette","boucherie"],["250 g","Champignons","fruits"],["2","Carottes","fruits"],["1","Oignon","fruits"],["20 cl","Crème fraîche","cremerie"],["300 g","Riz","epicerie"]]],["Rôti de porc et haricots verts","🍖",[["800 g","Rôti de porc","boucherie"],["600 g","Haricots verts","fruits"],["1 kg","Pommes de terre","fruits"]]],["Saucisses et purée","🌭",[["8","Saucisses","boucherie"],["1 kg","Pommes de terre","fruits"],["20 cl","Lait","cremerie"],["30 g","Beurre","cremerie"]]],["Cordon bleu et légumes","🍗",[["4","Cordons bleus","boucherie"],["600 g","Haricots verts","fruits"],["300 g","Riz","epicerie"]]],["Wraps au poulet","🌯",[["8","Wraps","epicerie"],["400 g","Blanc de poulet","boucherie"],["1","Salade","fruits"],["2","Tomates","fruits"],["100 g","Fromage frais","cremerie"]]],["Salade composée","🥗",[["1","Salade","fruits"],["3","Tomates","fruits"],["1","Concombre","fruits"],["4","Oeufs","cremerie"],["200 g","Thon","epicerie"],["1 boîte","Maïs","epicerie"]]],["Moules frites","🦪",[["2 kg","Moules","boucherie"],["800 g","Frites","epicerie"],["1","Oignon","fruits"],["20 cl","Crème fraîche","cremerie"]]],["Ratatouille","🍆",[["2","Courgettes","fruits"],["1","Aubergine","fruits"],["2","Poivrons","fruits"],["4","Tomates","fruits"],["1","Oignon","fruits"]]]];
+  var KIT_RECIPES = [{"id": "b0", "name": "Lasagnes", "emoji": "🍝", "cat": "famille", "portions": 4, "ings": [{"q": "400 g", "n": "Viande hachée", "c": "boucherie"}, {"q": "12 feuilles", "n": "Pâtes à lasagnes", "c": "epicerie"}, {"q": "500 g", "n": "Sauce tomate", "c": "epicerie"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "50 cl", "n": "Lait", "c": "cremerie"}, {"q": "40 g", "n": "Beurre", "c": "cremerie"}, {"q": "40 g", "n": "Farine", "c": "epicerie"}, {"q": "150 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b1", "name": "Spaghettis bolognaise", "emoji": "🍝", "cat": "famille", "portions": 4, "ings": [{"q": "500 g", "n": "Spaghettis", "c": "epicerie"}, {"q": "400 g", "n": "Viande hachée", "c": "boucherie"}, {"q": "400 g", "n": "Tomates concassées", "c": "epicerie"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "2", "n": "Carottes", "c": "fruits"}, {"q": "100 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b2", "name": "Pâtes carbonara", "emoji": "🍝", "cat": "famille", "portions": 4, "ings": [{"q": "500 g", "n": "Pâtes", "c": "epicerie"}, {"q": "200 g", "n": "Lardons", "c": "boucherie"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "100 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b3", "name": "Pâtes au saumon", "emoji": "🍝", "cat": "famille", "portions": 4, "ings": [{"q": "500 g", "n": "Pâtes", "c": "epicerie"}, {"q": "4 tranches", "n": "Saumon fumé", "c": "boucherie"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "1", "n": "Citron", "c": "fruits"}]}, {"id": "b4", "name": "Gratin de pâtes jambon-fromage", "emoji": "🧀", "cat": "famille", "portions": 4, "ings": [{"q": "400 g", "n": "Coquillettes", "c": "epicerie"}, {"q": "4 tranches", "n": "Jambon", "c": "boucherie"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "150 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b5", "name": "Gratin dauphinois", "emoji": "🥔", "cat": "famille", "portions": 4, "ings": [{"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "40 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "25 cl", "n": "Lait", "c": "cremerie"}, {"q": "1", "n": "Ail", "c": "fruits"}, {"q": "100 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b6", "name": "Hachis parmentier", "emoji": "🥔", "cat": "famille", "portions": 4, "ings": [{"q": "500 g", "n": "Viande hachée", "c": "boucherie"}, {"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "20 cl", "n": "Lait", "c": "cremerie"}, {"q": "30 g", "n": "Beurre", "c": "cremerie"}, {"q": "100 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b7", "name": "Tartiflette", "emoji": "🧀", "cat": "famille", "portions": 4, "ings": [{"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "1", "n": "Reblochon", "c": "cremerie"}, {"q": "200 g", "n": "Lardons", "c": "boucherie"}, {"q": "2", "n": "Oignons", "c": "fruits"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}]}, {"id": "b8", "name": "Raclette", "emoji": "🧀", "cat": "famille", "portions": 4, "ings": [{"q": "600 g", "n": "Fromage à raclette", "c": "cremerie"}, {"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "400 g", "n": "Charcuterie", "c": "boucherie"}, {"q": "", "n": "Bocal de cornichons", "c": "epicerie"}]}, {"id": "b9", "name": "Poulet rôti et pommes de terre", "emoji": "🍗", "cat": "famille", "portions": 4, "ings": [{"q": "1", "n": "Poulet entier", "c": "boucherie"}, {"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}]}, {"id": "b10", "name": "Poulet au curry et riz", "emoji": "🍛", "cat": "famille", "portions": 4, "ings": [{"q": "600 g", "n": "Blanc de poulet", "c": "boucherie"}, {"q": "40 cl", "n": "Lait de coco", "c": "epicerie"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "300 g", "n": "Riz", "c": "epicerie"}, {"q": "", "n": "Curry", "c": "epicerie"}]}, {"id": "b11", "name": "Brochettes de poulet et riz", "emoji": "🍢", "cat": "famille", "portions": 4, "ings": [{"q": "600 g", "n": "Blanc de poulet", "c": "boucherie"}, {"q": "2", "n": "Poivrons", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "300 g", "n": "Riz", "c": "epicerie"}]}, {"id": "b12", "name": "Riz cantonais", "emoji": "🍚", "cat": "famille", "portions": 4, "ings": [{"q": "300 g", "n": "Riz", "c": "epicerie"}, {"q": "4", "n": "Oeufs", "c": "cremerie"}, {"q": "4 tranches", "n": "Jambon", "c": "boucherie"}, {"q": "200 g", "n": "Petits pois", "c": "epicerie"}, {"q": "2", "n": "Carottes", "c": "fruits"}]}, {"id": "b13", "name": "Quiche lorraine", "emoji": "🥧", "cat": "famille", "portions": 4, "ings": [{"q": "1", "n": "Pâte brisée", "c": "cremerie"}, {"q": "200 g", "n": "Lardons", "c": "boucherie"}, {"q": "3", "n": "Oeufs", "c": "cremerie"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "100 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b14", "name": "Croque-monsieur", "emoji": "🥪", "cat": "famille", "portions": 4, "ings": [{"q": "8 tranches", "n": "Pain de mie", "c": "boulangerie"}, {"q": "4 tranches", "n": "Jambon", "c": "boucherie"}, {"q": "150 g", "n": "Gruyère râpé", "c": "cremerie"}, {"q": "1", "n": "Salade", "c": "fruits"}]}, {"id": "b15", "name": "Pizza maison", "emoji": "🍕", "cat": "famille", "portions": 4, "ings": [{"q": "1", "n": "Pâte à pizza", "c": "cremerie"}, {"q": "200 g", "n": "Sauce tomate", "c": "epicerie"}, {"q": "200 g", "n": "Mozzarella", "c": "cremerie"}, {"q": "4 tranches", "n": "Jambon", "c": "boucherie"}, {"q": "200 g", "n": "Champignons", "c": "fruits"}]}, {"id": "b16", "name": "Crêpes", "emoji": "🥞", "cat": "famille", "portions": 4, "ings": [{"q": "250 g", "n": "Farine", "c": "epicerie"}, {"q": "4", "n": "Oeufs", "c": "cremerie"}, {"q": "50 cl", "n": "Lait", "c": "cremerie"}, {"q": "50 g", "n": "Beurre", "c": "cremerie"}, {"q": "", "n": "Sucre", "c": "epicerie"}, {"q": "", "n": "Pâte à tartiner", "c": "epicerie"}]}, {"id": "b17", "name": "Galettes complètes", "emoji": "🥞", "cat": "famille", "portions": 4, "ings": [{"q": "8", "n": "Galettes de blé noir", "c": "cremerie"}, {"q": "4", "n": "Oeufs", "c": "cremerie"}, {"q": "4 tranches", "n": "Jambon", "c": "boucherie"}, {"q": "150 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b18", "name": "Soupe de légumes", "emoji": "🥣", "cat": "famille", "portions": 4, "ings": [{"q": "1 kg", "n": "Légumes pour soupe", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "", "n": "Cube de bouillon", "c": "epicerie"}, {"q": "1", "n": "Pain", "c": "boulangerie"}]}, {"id": "b19", "name": "Burgers maison", "emoji": "🍔", "cat": "famille", "portions": 4, "ings": [{"q": "4", "n": "Pains à burger", "c": "boulangerie"}, {"q": "4", "n": "Steaks hachés", "c": "boucherie"}, {"q": "4 tranches", "n": "Cheddar", "c": "cremerie"}, {"q": "1", "n": "Salade", "c": "fruits"}, {"q": "2", "n": "Tomates", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "800 g", "n": "Frites", "c": "epicerie"}]}, {"id": "b20", "name": "Steak et frites", "emoji": "🥩", "cat": "famille", "portions": 4, "ings": [{"q": "4", "n": "Steaks", "c": "boucherie"}, {"q": "800 g", "n": "Frites", "c": "epicerie"}, {"q": "1", "n": "Salade", "c": "fruits"}]}, {"id": "b21", "name": "Saumon et riz", "emoji": "🐟", "cat": "famille", "portions": 4, "ings": [{"q": "4", "n": "Pavés de saumon", "c": "boucherie"}, {"q": "300 g", "n": "Riz", "c": "epicerie"}, {"q": "1", "n": "Citron", "c": "fruits"}, {"q": "1", "n": "Brocoli", "c": "fruits"}]}, {"id": "b22", "name": "Poisson pané et purée", "emoji": "🐟", "cat": "famille", "portions": 4, "ings": [{"q": "8", "n": "Poissons panés", "c": "boucherie"}, {"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "20 cl", "n": "Lait", "c": "cremerie"}, {"q": "30 g", "n": "Beurre", "c": "cremerie"}]}, {"id": "b23", "name": "Chili con carne", "emoji": "🌶️", "cat": "famille", "portions": 4, "ings": [{"q": "500 g", "n": "Viande hachée", "c": "boucherie"}, {"q": "1 boîte", "n": "Haricots rouges", "c": "epicerie"}, {"q": "400 g", "n": "Tomates concassées", "c": "epicerie"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "300 g", "n": "Riz", "c": "epicerie"}]}, {"id": "b24", "name": "Tacos et fajitas", "emoji": "🌮", "cat": "famille", "portions": 4, "ings": [{"q": "8", "n": "Tortillas", "c": "epicerie"}, {"q": "400 g", "n": "Blanc de poulet", "c": "boucherie"}, {"q": "2", "n": "Poivrons", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "150 g", "n": "Fromage râpé", "c": "cremerie"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}]}, {"id": "b25", "name": "Boulettes sauce tomate", "emoji": "🍝", "cat": "famille", "portions": 4, "ings": [{"q": "500 g", "n": "Viande hachée", "c": "boucherie"}, {"q": "500 g", "n": "Pâtes", "c": "epicerie"}, {"q": "500 g", "n": "Sauce tomate", "c": "epicerie"}, {"q": "1", "n": "Oeuf", "c": "cremerie"}, {"q": "", "n": "Chapelure", "c": "epicerie"}]}, {"id": "b26", "name": "Gratin de chou-fleur", "emoji": "🥦", "cat": "famille", "portions": 4, "ings": [{"q": "1", "n": "Chou-fleur", "c": "fruits"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "150 g", "n": "Gruyère râpé", "c": "cremerie"}]}, {"id": "b27", "name": "Omelette et salade", "emoji": "🍳", "cat": "famille", "portions": 4, "ings": [{"q": "8", "n": "Oeufs", "c": "cremerie"}, {"q": "1", "n": "Salade", "c": "fruits"}, {"q": "100 g", "n": "Gruyère râpé", "c": "cremerie"}, {"q": "1", "n": "Pain", "c": "boulangerie"}]}, {"id": "b28", "name": "Blanquette de veau", "emoji": "🍲", "cat": "famille", "portions": 4, "ings": [{"q": "800 g", "n": "Veau à blanquette", "c": "boucherie"}, {"q": "250 g", "n": "Champignons", "c": "fruits"}, {"q": "2", "n": "Carottes", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}, {"q": "300 g", "n": "Riz", "c": "epicerie"}]}, {"id": "b29", "name": "Rôti de porc et haricots verts", "emoji": "🍖", "cat": "famille", "portions": 4, "ings": [{"q": "800 g", "n": "Rôti de porc", "c": "boucherie"}, {"q": "600 g", "n": "Haricots verts", "c": "fruits"}, {"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}]}, {"id": "b30", "name": "Saucisses et purée", "emoji": "🌭", "cat": "famille", "portions": 4, "ings": [{"q": "8", "n": "Saucisses", "c": "boucherie"}, {"q": "1 kg", "n": "Pommes de terre", "c": "fruits"}, {"q": "20 cl", "n": "Lait", "c": "cremerie"}, {"q": "30 g", "n": "Beurre", "c": "cremerie"}]}, {"id": "b31", "name": "Cordon bleu et légumes", "emoji": "🍗", "cat": "famille", "portions": 4, "ings": [{"q": "4", "n": "Cordons bleus", "c": "boucherie"}, {"q": "600 g", "n": "Haricots verts", "c": "fruits"}, {"q": "300 g", "n": "Riz", "c": "epicerie"}]}, {"id": "b32", "name": "Wraps au poulet", "emoji": "🌯", "cat": "famille", "portions": 4, "ings": [{"q": "8", "n": "Wraps", "c": "epicerie"}, {"q": "400 g", "n": "Blanc de poulet", "c": "boucherie"}, {"q": "1", "n": "Salade", "c": "fruits"}, {"q": "2", "n": "Tomates", "c": "fruits"}, {"q": "100 g", "n": "Fromage frais", "c": "cremerie"}]}, {"id": "b33", "name": "Salade composée", "emoji": "🥗", "cat": "famille", "portions": 4, "ings": [{"q": "1", "n": "Salade", "c": "fruits"}, {"q": "3", "n": "Tomates", "c": "fruits"}, {"q": "1", "n": "Concombre", "c": "fruits"}, {"q": "4", "n": "Oeufs", "c": "cremerie"}, {"q": "200 g", "n": "Thon", "c": "epicerie"}, {"q": "1 boîte", "n": "Maïs", "c": "epicerie"}]}, {"id": "b34", "name": "Moules frites", "emoji": "🦪", "cat": "famille", "portions": 4, "ings": [{"q": "2 kg", "n": "Moules", "c": "boucherie"}, {"q": "800 g", "n": "Frites", "c": "epicerie"}, {"q": "1", "n": "Oignon", "c": "fruits"}, {"q": "20 cl", "n": "Crème fraîche", "c": "cremerie"}]}, {"id": "b35", "name": "Ratatouille", "emoji": "🍆", "cat": "famille", "portions": 4, "ings": [{"q": "2", "n": "Courgettes", "c": "fruits"}, {"q": "1", "n": "Aubergine", "c": "fruits"}, {"q": "2", "n": "Poivrons", "c": "fruits"}, {"q": "4", "n": "Tomates", "c": "fruits"}, {"q": "1", "n": "Oignon", "c": "fruits"}]}];
+  var KIT_CN = [], KIT_CN_STATE = 'idle';   // recettes co-NAÎTRE : chargées à la demande depuis recettes_data.js (photos comprises)
   var COURSES_TAB = 'list', MEALS_OFFSET = 0, MEALS_PENDING = null, MEALS_OPEN = {};
   function mealsGet() {
     var o; try { o = JSON.parse(localStorage.getItem(MEALS_KEY) || 'null'); } catch (e) { o = null; }
@@ -6800,8 +6827,6 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   function mealsSave(o) { localStorage.setItem(MEALS_KEY, JSON.stringify(o)); scheduleSyncPublish(); }
   function mealNorm(x) { return String(x || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, '').replace(/[^a-z0-9 ]/g, ' ').replace(/\s+/g, ' ').trim().replace(/s\b/g, ''); }
-  function mealBookRecipes() { return MEAL_BOOK.map(function(b, i) { return { id: 'b' + i, name: b[0], emoji: b[1], ings: b[2].map(function(g) { return { q: g[0], n: g[1], c: g[2] }; }), builtin: true }; }); }
-  function mealAllRecipes() { return mealsGet().recipes.concat(mealBookRecipes()); }
   function mealFindRecipeByName(name) {
     var k = mealNorm(name); if (!k) return null;
     var all = mealAllRecipes();
@@ -6846,7 +6871,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     else if (u === 'ml' && r >= 1000) { txt = (r / 1000) + ' l'; }
     else if (u === 'ml' && r >= 100 && r % 10 === 0) { txt = (r / 10) + ' cl'; }
     else txt = r + (u ? ' ' + u : '');
-    return txt.replace('.', ',');
+    return txt.replace(/^(\d+)\.(\d)/, '$1,$2').replace(/(\d)\.(\d+) /, '$1,$2 ');
   }
   function mealQtyCombine(list) {
     var acc = {}, order = [];
@@ -6863,6 +6888,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   function coursesAddFromEntry(entry, ings) {
     var list = getCourses();
     ings.forEach(function(g) {
+      if (g.c === 'none') return;   // ex. l'eau : pas besoin de l'acheter
       var k = mealNorm(g.n), it = list.filter(function(x) { return mealNorm(x.text) === k; })[0];
       if (!it) { it = { id: 'c' + Date.now() + Math.random().toString(36).slice(2, 6), text: g.n, cat: g.c || 'epicerie', done: false, from: {} }; list.push(it); }
       else { if (!it.from || !Object.keys(it.from).length) it.manual = true; it.done = false; if (!it.from) it.from = {}; }
@@ -6890,17 +6916,6 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   function mealsNav(d) { MEALS_OFFSET += d; renderMeals(); }
   function mealsToday() { MEALS_OFFSET = 0; renderMeals(); }
-  function setCoursesTab(t) { COURSES_TAB = t; renderCoursesTabs(); if (t === 'meals') renderMeals(); }
-  function renderCoursesTabs() {
-    var bar = document.getElementById('coursesTabs'); if (!bar) return;
-    var n = getCourses().filter(function(x) { return !x.done; }).length;
-    bar.innerHTML = '<button class="' + (COURSES_TAB === 'list' ? 'on' : '') + '" onclick="setCoursesTab(\'list\')">🛒 Ma liste' + (n ? ' (' + n + ')' : '') + '</button>'
-      + '<button class="' + (COURSES_TAB === 'meals' ? 'on' : '') + '" onclick="setCoursesTab(\'meals\')">🍽️ Repas de la semaine</button>';
-    var pl = document.getElementById('courses-pane-list'), pm = document.getElementById('courses-pane-meals');
-    if (pl) pl.style.display = COURSES_TAB === 'list' ? '' : 'none';
-    if (pm) pm.style.display = COURSES_TAB === 'meals' ? '' : 'none';
-    if (COURSES_TAB === 'meals' && pm && !pm.innerHTML) renderMeals();
-  }
   function mealsTargetOptions(wk, selected) {
     var out = '<option value="idea"' + (selected === 'idea' ? ' selected' : '') + '>💡 Idée de la semaine (pas encore placée)</option>';
     for (var i = 0; i < 7; i++) {
@@ -6912,21 +6927,19 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     }
     return out;
   }
-  function mealByBadge(id) {
-    var p = PERSONS.filter(function(x) { return x.id === id; })[0]; if (!p) return '';
-    return '<span class="by" style="background:' + esc(p.color || '#3F5D46') + '" title="Proposé par ' + esc(p.label) + '">' + esc(p.init || p.label.charAt(0)) + '</span>';
+  // ── Nombre de parts : on recalcule les quantités d'une recette ──
+  function mealQtyScale(q, f) {
+    q = String(q || ''); if (!q || !f || f === 1) return q;
+    var m = q.match(/^(\d+(?:[.,]\d+)?)(.*)$/); if (!m) return q;
+    var n = parseFloat(m[1].replace(',', '.')) * f, r = n >= 10 ? Math.round(n) : Math.round(n * 10) / 10;
+    if (r === 0) r = Math.round(n * 100) / 100;
+    return String(r).replace('.', ',') + m[2];
   }
-  function mealsAdd() {
-    var inp = document.getElementById('mealInName'), name = ((inp && inp.value) || '').trim();
-    if (!name) { if (inp) inp.focus(); return; }
-    var by = (document.getElementById('mealInBy') || {}).value || '', target = (document.getElementById('mealInTarget') || {}).value || 'idea';
-    var r = mealFindRecipeByName(name);
-    if (r) { mealsCreateEntry(r.name, by, target, r.id, r.ings); if (inp) inp.value = ''; return; }
-    MEALS_PENDING = { name: name, by: by, target: target, text: '' };
-    renderMeals();
-  }
-  function mealsCreateEntry(name, by, target, rid, ings) {
-    var o = mealsGet(), wk = mealsWeekStart(), e = { id: 'm' + Date.now() + Math.random().toString(36).slice(2, 5), name: name, by: by, wk: wk, date: '', slot: '', rid: rid || null, at: new Date().toISOString() };
+  function mealScaleIngs(ings, f) { return (ings || []).map(function(g) { return Object.assign({}, g, { q: mealQtyScale(g.q, f) }); }); }
+  function mealBasePor(r) { return (r && r.portions > 0) ? r.portions : 0; }
+  function mealEntryIngs(e, r) { var b = mealBasePor(r), n = e && e.por; return mealScaleIngs(r.ings, (b && n) ? n / b : 1); }
+  function mealsCreateEntry(name, by, target, rid, ings, por) {
+    var o = mealsGet(), wk = mealsWeekStart(), e = { id: 'm' + Date.now() + Math.random().toString(36).slice(2, 5), name: name, by: by, wk: wk, date: '', slot: '', rid: rid || null, por: por || 0, at: new Date().toISOString() };
     if (target && target !== 'idea') { var q = target.split('|'); e.date = q[0]; e.slot = q[1]; e.wk = addDaysISO(q[0], 1 - planDow(q[0])); }
     o.entries.push(e); mealsSave(o);
     if (e.date && ings && ings.length) { coursesAddFromEntry(e, ings); e.added = true; mealsSave(o); }
@@ -6954,9 +6967,18 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var q = target.split('|'); e.date = q[0]; e.slot = q[1]; e.wk = addDaysISO(q[0], 1 - planDow(q[0]));
     var r = e.rid ? mealRecipeById(e.rid) : mealFindRecipeByName(e.name);
     if (r && !e.rid) e.rid = r.id;
-    if (!e.added && r && r.ings.length) { coursesAddFromEntry(e, r.ings); e.added = true; }
+    if (!e.added && r && r.ings.length) { coursesAddFromEntry(e, mealEntryIngs(e, r)); e.added = true; }
     mealsSave(o); renderMeals(); renderCourses();
     mhToast(e.added ? '🛒 Ingrédients ajoutés aux courses' : '✅ Repas placé');
+  }
+  function mealsSetPor(id, n) {
+    n = Math.max(1, Math.min(40, parseInt(n, 10) || 0)); if (!n) return;
+    var o = mealsGet(), e = o.entries.filter(function(x) { return x.id === id; })[0]; if (!e) return;
+    var r = e.rid ? mealRecipeById(e.rid) : null;
+    coursesRemoveFromEntry(id); e.por = n; e.added = false;
+    if (e.date && r && r.ings.length) { coursesAddFromEntry(e, mealEntryIngs(e, r)); e.added = true; }
+    mealsSave(o); kitCloseRecipe(); renderMeals(); renderCourses();
+    mhToast(e.date ? '🛒 Quantités mises à jour pour ' + n + ' parts' : '✅ ' + n + ' parts enregistrées');
   }
   function mealsUnplace(id) {
     var o = mealsGet(), e = o.entries.filter(function(x) { return x.id === id; })[0]; if (!e) return;
@@ -6975,93 +6997,15 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   function mealsDeleteRecipe(rid) {
     var o = mealsGet(); o.recipes = o.recipes.filter(function(x) { return x.id !== rid; }); mealsSave(o); renderMeals();
   }
-  function mealChipHtml(e) {
-    var r = e.rid ? mealRecipeById(e.rid) : null, open = !!MEALS_OPEN[e.id];
-    var ing = (open && r && r.ings.length) ? '<span class="ing">' + r.ings.map(function(g) { return esc((g.q ? g.q + ' ' : '') + g.n); }).join(' · ') + '</span>' : '';
-    return '<div class="meal-chip">' + mealByBadge(e.by) + '<span class="nm" onclick="mealsToggleOpen(' + jsAttr(e.id) + ')" style="cursor:pointer">' + esc((r && r.emoji ? r.emoji + ' ' : '') + e.name)
-      + (r && r.ings.length ? ' <span style="font-size:11px;color:var(--muted);font-weight:500">· ' + r.ings.length + ' ingr.</span>' : ' <span style="font-size:11px;color:#B96A46;font-weight:600">· sans ingrédients</span>') + ing + '</span>'
-      + '<button title="Remettre dans les idées" onclick="mealsUnplace(' + jsAttr(e.id) + ')">↩</button>'
-      + '<button title="Supprimer" onclick="mealsRemove(' + jsAttr(e.id) + ')">✕</button></div>';
-  }
-  function renderMeals() {
-    var el = document.getElementById('courses-pane-meals'); if (!el) return;
-    var wk = mealsWeekStart(), o = mealsGet(), today = todayISO();
-    var ents = o.entries.filter(function(e) { return e.wk === wk; });
-    var ideas = ents.filter(function(e) { return !e.date; });
-    var out = '<div class="meal-weeknav"><button onclick="mealsNav(-1)" title="Semaine précédente">‹</button><div class="lbl">' + esc(mealsWeekLabel(wk)) + (MEALS_OFFSET ? '<div><a href="#" onclick="mealsToday();return false" style="font-size:12px;font-weight:600;color:#3F5D46">Revenir à cette semaine</a></div>' : '') + '</div><button onclick="mealsNav(1)" title="Semaine suivante">›</button></div>';
-    // formulaire
-    var all = mealAllRecipes();
-    out += '<div class="add-panel" style="margin-top:0">';
-    out += '<div class="row1"><input type="text" id="mealInName" list="mealSuggest" placeholder="Ex : Lasagnes, crêpes, gratin…" autocomplete="off" onkeydown="if(event.key===\'Enter\')mealsAdd()"></div>';
-    out += '<datalist id="mealSuggest">' + all.map(function(r) { return '<option value="' + esc(r.name) + '">'; }).join('') + '</datalist>';
-    out += '<div class="row1"><select id="mealInBy">' + PERSONS.map(function(p) { return '<option value="' + esc(p.id) + '">Proposé par ' + esc(p.label) + '</option>'; }).join('') + '</select></div>';
-    out += '<div class="row1"><select id="mealInTarget">' + mealsTargetOptions(wk, 'idea') + '</select></div>';
-    out += '<button onclick="mealsAdd()">➕ Ajouter le repas</button>';
-    out += '<p class="points-note" style="margin:8px 0 0">Si je connais la recette, les ingrédients vont <b>directement</b> dans ta liste de courses dès que le repas est placé sur un jour. Sinon tu les notes une seule fois et je m\'en souviendrai.</p>';
-    out += '</div>';
-    // recette inconnue / modification
-    if (MEALS_PENDING) {
-      var P = MEALS_PENDING;
-      out += '<div class="meal-pending"><div style="font-weight:800;font-size:14px">' + (P.editId ? '✏️ Ingrédients de « ' + esc(P.name) + ' »' : '🤔 Je ne connais pas encore « ' + esc(P.name) + ' »') + '</div>'
-        + '<div style="font-size:12.5px;color:var(--muted);margin-top:3px">Un ingrédient par ligne, avec la quantité si tu veux (ex : « 500 g pâtes », « 2 oignons », « lait »). Je m\'en souviendrai pour les prochaines fois.</div>'
-        + '<textarea id="mealPendingTxt" placeholder="500 g pâtes&#10;200 g lardons&#10;20 cl crème fraîche">' + esc(P.text || '') + '</textarea>'
-        + '<div class="row"><button onclick="mealsPendingSave(true)">✅ Enregistrer' + (P.editId ? '' : ' et ajouter le repas') + '</button>'
-        + (P.editId ? '' : '<button class="ghost" onclick="mealsPendingSave(false)">Ajouter sans ingrédients</button>')
-        + '<button class="ghost" onclick="mealsPendingCancel()">Annuler</button></div></div>';
-    }
-    // idées
-    out += '<div class="meal-sec">💡 Envies de la semaine (' + ideas.length + ')</div>';
-    if (!ideas.length) out += '<div class="meal-empty" style="margin-bottom:6px">Aucune idée en attente. Ajoute-en une ci-dessus, ou choisis directement un jour.</div>';
-    ideas.forEach(function(e) {
-      var r = e.rid ? mealRecipeById(e.rid) : mealFindRecipeByName(e.name);
-      out += '<div class="meal-idea">' + mealByBadge(e.by) + '<span style="flex:1;min-width:120px">' + esc((r && r.emoji ? r.emoji + ' ' : '') + e.name) + '</span>'
-        + '<select onchange="mealsPlace(' + jsAttr(e.id) + ',this.value)"><option value="">Placer le…</option>' + mealsTargetOptions(wk, '').replace(/<option value="idea"[^>]*>[^<]*<\/option>/, '') + '</select>'
-        + '<button style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px" title="Supprimer" onclick="mealsRemove(' + jsAttr(e.id) + ')">✕</button></div>';
-    });
-    // jours
-    out += '<div class="meal-sec">📅 Les repas de la semaine</div>';
-    for (var i = 0; i < 7; i++) {
-      var d = addDaysISO(wk, i);
-      out += '<div class="meal-day' + (d === today ? ' today' : '') + '"><div class="meal-day-h">' + esc(trDateLabel(d)) + (d === today ? ' · aujourd\'hui' : '') + '</div>';
-      ['midi', 'soir'].forEach(function(sl) {
-        var l = ents.filter(function(e) { return e.date === d && e.slot === sl; });
-        out += '<div class="meal-slot"><div class="sl">' + (sl === 'midi' ? 'Midi' : 'Soir') + '</div><div class="ls">' + (l.length ? l.map(mealChipHtml).join('') : '<div class="meal-empty">—</div>') + '</div></div>';
-      });
-      out += '</div>';
-    }
-    // résumé courses
-    var nIng = mealsCountCourses();
-    out += '<button class="clear-done-btn" style="margin-top:6px;background:#3F5D46;color:#fff;border-color:#3F5D46" onclick="setCoursesTab(\'list\')">🛒 Voir ma liste de courses' + (nIng ? ' (' + nIng + ' ingrédient' + (nIng > 1 ? 's' : '') + ' de tes repas)' : '') + '</button>';
-    // recettes mémorisées
-    if (o.recipes.length) {
-      out += '<div class="meal-sec">📚 Mes recettes mémorisées (' + o.recipes.length + ')</div>';
-      o.recipes.forEach(function(r) {
-        out += '<div class="meal-idea" style="background:var(--card);border-color:var(--border)"><span style="flex:1;min-width:120px">' + esc(r.name) + ' <span style="font-size:11px;color:var(--muted);font-weight:500">· ' + r.ings.length + ' ingr.</span></span>'
-          + '<button style="border:none;background:none;cursor:pointer;font-size:14px" title="Modifier les ingrédients" onclick="mealsEditRecipe(' + jsAttr(r.id) + ')">✏️</button>'
-          + '<button style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px" title="Oublier cette recette" onclick="mealsDeleteRecipe(' + jsAttr(r.id) + ')">🗑️</button></div>';
-      });
-    }
-    var keepName = (document.getElementById('mealInName') || {}).value || '';
-    el.innerHTML = out;
-    if (keepName) { var nn = document.getElementById('mealInName'); if (nn) nn.value = keepName; }
-  }
   function getCourses() {
     try { return JSON.parse(localStorage.getItem(COURSES_KEY) || '[]'); } catch(e) { return []; }
   }
   function saveCourses(list) { localStorage.setItem(COURSES_KEY, JSON.stringify(list)); scheduleSyncPublish(); }
 
   function populateCourseCatSelect() {
-    var sel = document.getElementById('courseInputCat');
+    try { kitMount(); } catch (e) {}
+    var sel = document.getElementById('courseInputCat'); if (!sel) return;
     sel.innerHTML = COURSE_CATS.map(function(c){ return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
-  }
-
-  function populateGroupSelects() {
-    ['daily','weekly','monthly','exceptional'].forEach(function(period) {
-      var sel = document.getElementById('room-' + period);
-      if (sel) sel.innerHTML = ROOMS.map(function(r){ return '<option value="' + r.id + '">' + r.label + '</option>'; }).join('');
-    });
-    var argentSel = document.getElementById('room-argent');
-    if (argentSel) argentSel.innerHTML = MONEY_CATS.map(function(c){ return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
   }
 
   function addCourseItem() {
@@ -7095,12 +7039,318 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     renderCourses();
   }
 
+
+
+  // ── Onglets du bloc (Ma liste · Repas · Recettes) — même code dans l'appli foyer et dans co-NAÎTRE ──
+  var COURSE_CATS = (typeof COURSE_CATS !== 'undefined' && COURSE_CATS) || [
+    { id: 'fruits',      label: '🥦 Fruits & légumes' },
+    { id: 'cremerie',    label: '🧀 Frais / Crémerie' },
+    { id: 'boucherie',   label: '🥩 Boucherie / Poisson' },
+    { id: 'boulangerie', label: '🥖 Boulangerie' },
+    { id: 'epicerie',    label: '🥫 Épicerie / Placards' },
+    { id: 'hygiene',     label: '🧴 Hygiène & entretien' },
+    { id: 'autre',       label: '📦 Autre' }
+  ];
+  var KIT_HOST = window.KIT_HOST || {};      // { extraTabs:[{id,label}], onTab:fn(id), defaultTab:'list' }
+  var KIT_RECIPE_Q = '', KIT_RECIPE_GROUP = '', KIT_OPEN_RECIPE = '';
+  var KIT_GROUPS = [['user', '📝 Mes recettes mémorisées'], ['cn', '🌿 Recettes co-NAÎTRE'], ['famille', '👪 Recettes de famille']];
+  function kitPersons() { try { return (typeof PERSONS !== 'undefined' && PERSONS && PERSONS.length) ? PERSONS : []; } catch (e) { return []; } }
+  function mealByBadge(id) {
+    var p = kitPersons().filter(function(x) { return x.id === id; })[0]; if (!p) return '';
+    return '<span class="by" style="background:' + esc(p.color || '#3F5D46') + '" title="Proposé par ' + esc(p.label) + '">' + esc(p.init || p.label.charAt(0)) + '</span>';
+  }
+  function mealBookRecipes() { return KIT_RECIPES.concat(KIT_CN).map(function(r) { var c = Object.assign({}, r); c.builtin = true; return c; }); }
+  // Chargement des recettes co-NAÎTRE (fichier recettes_data.js posé à côté de l'appli ; sinon on essaie l'autre appli)
+  // Recettes ajoutées depuis le tableau de bord (onglet Livraison → Recettes) : lues dans la base partagée
+  var KIT_DB_URL = 'https://cooperation-familiale-default-rtdb.europe-west1.firebasedatabase.app';
+  function kitLoadExtras(done) {
+    try {
+      fetch(KIT_DB_URL + '/recettes_cn_extra.json').then(function(r) { return r.json(); }).then(function(o) {
+        var l = [];
+        if (o && typeof o === 'object') Object.keys(o).forEach(function(k) {
+          var r = o[k]; if (!r || !r.name) return;
+          r.id = k; r.cat = 'cn'; r.ings = Array.isArray(r.ings) ? r.ings : Object.values(r.ings || {}); r.steps = Array.isArray(r.steps) ? r.steps : Object.values(r.steps || {}); l.push(r);
+        });
+        done(l);
+      }).catch(function() { done([]); });
+    } catch (e) { done([]); }
+  }
+  function kitLoadCn() {
+    if (KIT_CN_STATE !== 'idle') return;
+    KIT_CN_STATE = 'loading';
+    var here = String(location.href).split('#')[0].split('?')[0].replace(/[^\/]*$/, '');
+    var srcs = ['recettes_data.js?v=1'];
+    ['https://anaisfittraining-afk.github.io/Cooperation-familiale/', 'https://anaisfittraining-afk.github.io/Mon-epanouissement-personnel/'].forEach(function(b) { if (b !== here) srcs.push(b + 'recettes_data.js?v=1'); });
+    var base = null, extra = null;
+    function finish() {
+      if (base === null || extra === null) return;
+      KIT_CN = base.concat(extra); KIT_CN_STATE = KIT_CN.length ? 'ok' : 'err'; kitCnRefresh();
+    }
+    kitLoadExtras(function(l) { extra = l; finish(); });
+    var i = 0;
+    (function next() {
+      if (i >= srcs.length) { base = []; finish(); return; }
+      var s = document.createElement('script'); s.async = true; s.src = srcs[i++];
+      s.onload = function() {
+        if (Array.isArray(window.KIT_RECIPES_CN) && window.KIT_RECIPES_CN.length) { base = window.KIT_RECIPES_CN; finish(); }
+        else next();
+      };
+      s.onerror = function() { s.remove(); next(); };
+      document.head.appendChild(s);
+    })();
+  }
+  function kitCnRefresh() {
+    try { var pr = document.getElementById('courses-pane-recipes'); if (pr && pr.innerHTML) renderRecipes(); } catch (e) {}
+    try { var pm = document.getElementById('courses-pane-meals'); if (pm && pm.innerHTML && !MEALS_PENDING) renderMeals(); } catch (e) {}
+  }
+  // Photos des cartes : posées au fur et à mesure qu'elles apparaissent à l'écran (évite de recharger toutes les images à chaque frappe)
+  var KIT_IO = null;
+  function kitFillPhotos(root) {
+    var imgs = (root || document).querySelectorAll('img[data-ph]'); if (!imgs.length) return;
+    function put(im) { var r = mealRecipeById(im.getAttribute('data-ph')); if (r && r.photo) im.src = r.photo; im.removeAttribute('data-ph'); }
+    if (!('IntersectionObserver' in window)) { for (var k = 0; k < imgs.length; k++) put(imgs[k]); return; }
+    if (!KIT_IO) KIT_IO = new IntersectionObserver(function(es) { es.forEach(function(e) { if (e.isIntersecting) { KIT_IO.unobserve(e.target); put(e.target); } }); }, { rootMargin: '300px' });
+    for (var j = 0; j < imgs.length; j++) KIT_IO.observe(imgs[j]);
+  }
+  function mealAllRecipes() {
+    var mine = mealsGet().recipes.map(function(r) { return Object.assign({ cat: 'user' }, r); });
+    return mine.concat(mealBookRecipes());
+  }
+  function kitGroupLabel(cat) { var g = KIT_GROUPS.filter(function(x) { return x[0] === cat; })[0]; return g ? g[1] : cat; }
+
+  function kitMount() {
+    var root = document.getElementById('kit-root'); if (!root) return false;
+    if (root.getAttribute('data-mounted')) return true;
+    root.innerHTML = '<div class="mh-seg" id="coursesTabs"></div>'
+      + '<div id="courses-pane-list"><div class="add-panel"><div class="row1"><input type="text" id="courseInputText" placeholder="Ex : Lait, pommes, éponges…" onkeydown="if(event.key===\'Enter\')addCourseItem()"></div>'
+      + '<select id="courseInputCat"></select><button onclick="addCourseItem()">➕ Ajouter à la liste</button></div>'
+      + '<div id="list-courses"></div><button class="clear-done-btn" onclick="clearDoneCourses()">🗑️ Vider les articles cochés</button></div>'
+      + '<div id="courses-pane-meals" style="display:none"></div><div id="courses-pane-recipes" style="display:none"></div>';
+    root.setAttribute('data-mounted', '1');
+    populateCourseCatSelect();
+    if (KIT_HOST.defaultTab && !window.__kitTabInit) { COURSES_TAB = KIT_HOST.defaultTab; window.__kitTabInit = true; }
+    kitLoadCn();
+    return true;
+  }
+  function setCoursesTab(t) {
+    COURSES_TAB = t; renderCoursesTabs();
+    if (t === 'meals') renderMeals();
+    if (t === 'recipes') renderRecipes();
+    if (t === 'list') renderCourses();
+    try { if (KIT_HOST.onTab) KIT_HOST.onTab(t); } catch (e) {}
+  }
+  function renderCoursesTabs() {
+    if (!kitMount()) return;
+    var bar = document.getElementById('coursesTabs'); if (!bar) return;
+    var n = getCourses().filter(function(x) { return !x.done; }).length;
+    var tabs = (KIT_HOST.extraTabs || []).concat([{ id: 'list', label: '🛒 Ma liste' + (n ? ' (' + n + ')' : '') }, { id: 'meals', label: '🍽️ Repas' }, { id: 'recipes', label: '📚 Recettes' }]);
+    bar.innerHTML = tabs.map(function(t) { return '<button class="' + (COURSES_TAB === t.id ? 'on' : '') + '" onclick="setCoursesTab(' + jsAttr(t.id) + ')">' + t.label + '</button>'; }).join('');
+    ['list', 'meals', 'recipes'].forEach(function(id) { var p = document.getElementById('courses-pane-' + id); if (p) p.style.display = COURSES_TAB === id ? '' : 'none'; });
+    var pm = document.getElementById('courses-pane-meals'); if (COURSES_TAB === 'meals' && pm && !pm.innerHTML) renderMeals();
+    var pr = document.getElementById('courses-pane-recipes'); if (COURSES_TAB === 'recipes' && pr && !pr.innerHTML) renderRecipes();
+  }
+
+  // ── Menu déroulant : on choisit la recette dans la liste ──
+  function mealsRecipeSelectHtml() {
+    var all = mealAllRecipes(), out = '<select id="mealInRecipe" onchange="mealsRecipePicked()"><option value="">🍽️ Choisis une recette dans la liste…</option>';
+    KIT_GROUPS.forEach(function(g) {
+      var l = all.filter(function(r) { return (r.cat || 'user') === g[0]; }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'fr'); });
+      if (!l.length) return;
+      out += '<optgroup label="' + esc(g[1]) + '">' + l.map(function(r) { return '<option value="' + esc(r.id) + '">' + esc((r.emoji ? r.emoji + ' ' : '') + r.name) + '</option>'; }).join('') + '</optgroup>';
+    });
+    return out + '<option value="__other">✏️ Autre repas (je l\'écris moi-même)</option></select>';
+  }
+  function mealsRecipePicked() {
+    var sel = document.getElementById('mealInRecipe'), inp = document.getElementById('mealInName'); if (!sel || !inp) return;
+    inp.style.display = sel.value === '__other' ? '' : 'none';
+    if (sel.value === '__other') inp.focus();
+    var pr = document.getElementById('mealPorRow'), pi = document.getElementById('mealInPor'), rr = (sel.value && sel.value !== '__other') ? mealRecipeById(sel.value) : null;
+    if (pr) { pr.style.display = (rr && mealBasePor(rr)) ? '' : 'none'; if (rr && mealBasePor(rr) && pi && (!pi.value || pi.getAttribute('data-rid') !== rr.id)) { pi.value = mealBasePor(rr); pi.setAttribute('data-rid', rr.id); } }
+  }
+  function mealsAdd() {
+    var sel = document.getElementById('mealInRecipe'), inp = document.getElementById('mealInName'), v = sel ? sel.value : '';
+    if (!v) { if (sel) sel.focus(); mhToast('Choisis d\'abord une recette dans la liste'); return; }
+    var by = (document.getElementById('mealInBy') || {}).value || '', target = (document.getElementById('mealInTarget') || {}).value || 'idea';
+    if (v !== '__other') {
+      var r = mealRecipeById(v); if (!r) return;
+      var por = parseInt((document.getElementById('mealInPor') || {}).value, 10) || 0, b = mealBasePor(r);
+      mealsCreateEntry(r.name, by, target, r.id, b && por ? mealScaleIngs(r.ings, por / b) : r.ings, b ? (por || b) : 0); if (sel) sel.value = ''; mealsRecipePicked(); return;
+    }
+    var name = ((inp && inp.value) || '').trim();
+    if (!name) { if (inp) inp.focus(); return; }
+    var r2 = mealFindRecipeByName(name);
+    if (r2) { mealsCreateEntry(r2.name, by, target, r2.id, r2.ings); if (inp) inp.value = ''; if (sel) sel.value = ''; mealsRecipePicked(); return; }
+    MEALS_PENDING = { name: name, by: by, target: target, text: '' };
+    renderMeals();
+  }
+  function mealChipHtml(e) {
+    var r = e.rid ? mealRecipeById(e.rid) : null, open = !!MEALS_OPEN[e.id];
+    var ing = (open && r && r.ings.length) ? '<span class="ing">' + mealEntryIngs(e, r).map(function(g) { return esc((g.q ? g.q + ' ' : '') + g.n); }).join(' · ') + '</span>' : '';
+    var fiche = r ? ' <a href="#" onclick="kitOpenRecipe(' + jsAttr(r.id) + ',' + jsAttr(e.id) + ');return false" style="font-size:11px;font-weight:700;color:#3F5D46">📖 Voir la recette</a>' : '';
+    var parts = (r && mealBasePor(r)) ? ' <span style="font-size:11px;color:var(--muted);font-weight:600">· 👥 ' + (e.por || mealBasePor(r)) + '</span>' : '';
+    return '<div class="meal-chip">' + mealByBadge(e.by) + '<span class="nm" onclick="mealsToggleOpen(' + jsAttr(e.id) + ')" style="cursor:pointer">' + esc((r && r.emoji ? r.emoji + ' ' : '') + e.name)
+      + (r && r.ings.length ? ' <span style="font-size:11px;color:var(--muted);font-weight:500">· ' + r.ings.length + ' ingr.</span>' : ' <span style="font-size:11px;color:#B96A46;font-weight:600">· sans ingrédients</span>') + parts + fiche + ing + '</span>'
+      + '<button title="Remettre dans les idées" onclick="mealsUnplace(' + jsAttr(e.id) + ')">↩</button>'
+      + '<button title="Supprimer" onclick="mealsRemove(' + jsAttr(e.id) + ')">✕</button></div>';
+  }
+  function renderMeals() {
+    if (!kitMount()) return;
+    var el = document.getElementById('courses-pane-meals'); if (!el) return;
+    var wk = mealsWeekStart(), o = mealsGet(), today = todayISO();
+    var ents = o.entries.filter(function(e) { return e.wk === wk; });
+    var ideas = ents.filter(function(e) { return !e.date; });
+    var persons = kitPersons();
+    var keepSel = (document.getElementById('mealInRecipe') || {}).value || '', keepName = (document.getElementById('mealInName') || {}).value || '';
+    var out = '<div class="meal-weeknav"><button onclick="mealsNav(-1)" title="Semaine précédente">‹</button><div class="lbl">' + esc(mealsWeekLabel(wk)) + (MEALS_OFFSET ? '<div><a href="#" onclick="mealsToday();return false" style="font-size:12px;font-weight:600;color:#3F5D46">Revenir à cette semaine</a></div>' : '') + '</div><button onclick="mealsNav(1)" title="Semaine suivante">›</button></div>';
+    out += '<div class="add-panel" style="margin-top:0">';
+    out += '<div class="row1">' + mealsRecipeSelectHtml() + '</div>';
+    out += '<div class="row1" id="mealPorRow" style="display:none;align-items:center;gap:8px"><span style="font-size:13.5px;font-weight:700">👥 Pour</span><input type="number" id="mealInPor" min="1" max="40" inputmode="numeric" style="width:76px;flex:none"><span style="font-size:13.5px;font-weight:700">personnes</span></div>';
+    out += '<div class="row1"><input type="text" id="mealInName" style="display:none" placeholder="Nom du repas (ex : gratin, crêpes…)" autocomplete="off" onkeydown="if(event.key===\'Enter\')mealsAdd()"></div>';
+    if (persons.length) out += '<div class="row1"><select id="mealInBy">' + persons.map(function(p) { return '<option value="' + esc(p.id) + '">Proposé par ' + esc(p.label) + '</option>'; }).join('') + '</select></div>';
+    out += '<div class="row1"><select id="mealInTarget">' + mealsTargetOptions(wk, 'idea') + '</select></div>';
+    out += '<button onclick="mealsAdd()">➕ Ajouter le repas</button>';
+    out += '<p class="points-note" style="margin:8px 0 0">Choisis une recette, puis un jour : les ingrédients vont <b>directement</b> dans ta liste de courses dès que le repas est placé sur un jour. Tu peux aussi parcourir les fiches dans l\'onglet 📚 Recettes.</p>';
+    out += '</div>';
+    if (MEALS_PENDING) {
+      var P = MEALS_PENDING;
+      out += '<div class="meal-pending"><div style="font-weight:800;font-size:14px">' + (P.editId ? '✏️ Ingrédients de « ' + esc(P.name) + ' »' : '🤔 Je ne connais pas encore « ' + esc(P.name) + ' »') + '</div>'
+        + '<div style="font-size:12.5px;color:var(--muted);margin-top:3px">Un ingrédient par ligne, avec la quantité si tu veux (ex : « 500 g pâtes », « 2 oignons », « lait »). Je m\'en souviendrai pour les prochaines fois.</div>'
+        + '<textarea id="mealPendingTxt" placeholder="500 g pâtes&#10;200 g lardons&#10;20 cl crème fraîche">' + esc(P.text || '') + '</textarea>'
+        + '<div class="row"><button onclick="mealsPendingSave(true)">✅ Enregistrer' + (P.editId ? '' : ' et ajouter le repas') + '</button>'
+        + (P.editId ? '' : '<button class="ghost" onclick="mealsPendingSave(false)">Ajouter sans ingrédients</button>')
+        + '<button class="ghost" onclick="mealsPendingCancel()">Annuler</button></div></div>';
+    }
+    out += '<div class="meal-sec">💡 Envies de la semaine (' + ideas.length + ')</div>';
+    if (!ideas.length) out += '<div class="meal-empty" style="margin-bottom:6px">Aucune idée en attente. Ajoute-en une ci-dessus, ou choisis directement un jour.</div>';
+    ideas.forEach(function(e) {
+      var r = e.rid ? mealRecipeById(e.rid) : mealFindRecipeByName(e.name);
+      out += '<div class="meal-idea">' + mealByBadge(e.by) + '<span style="flex:1;min-width:120px">' + esc((r && r.emoji ? r.emoji + ' ' : '') + e.name) + (r ? ' <a href="#" onclick="kitOpenRecipe(' + jsAttr(r.id) + ',' + jsAttr(e.id) + ');return false" style="font-size:11px;font-weight:700;color:#3F5D46">📖 Voir la recette</a>' : '') + '</span>'
+        + '<select onchange="mealsPlace(' + jsAttr(e.id) + ',this.value)"><option value="">Placer le…</option>' + mealsTargetOptions(wk, '').replace(/<option value="idea"[^>]*>[^<]*<\/option>/, '') + '</select>'
+        + '<button style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px" title="Supprimer" onclick="mealsRemove(' + jsAttr(e.id) + ')">✕</button></div>';
+    });
+    out += '<div class="meal-sec">📅 Les repas de la semaine</div>';
+    for (var i = 0; i < 7; i++) {
+      var d = addDaysISO(wk, i);
+      out += '<div class="meal-day' + (d === today ? ' today' : '') + '"><div class="meal-day-h">' + esc(trDateLabel(d)) + (d === today ? ' · aujourd\'hui' : '') + '</div>';
+      ['midi', 'soir'].forEach(function(sl) {
+        var l = ents.filter(function(e) { return e.date === d && e.slot === sl; });
+        out += '<div class="meal-slot"><div class="sl">' + (sl === 'midi' ? 'Midi' : 'Soir') + '</div><div class="ls">' + (l.length ? l.map(mealChipHtml).join('') : '<div class="meal-empty">—</div>') + '</div></div>';
+      });
+      out += '</div>';
+    }
+    var nIng = mealsCountCourses();
+    out += '<button class="clear-done-btn" style="margin-top:6px;background:#3F5D46;color:#fff;border-color:#3F5D46" onclick="setCoursesTab(\'list\')">🛒 Voir ma liste de courses' + (nIng ? ' (' + nIng + ' ingrédient' + (nIng > 1 ? 's' : '') + ' de tes repas)' : '') + '</button>';
+    if (o.recipes.length) {
+      out += '<div class="meal-sec">📚 Mes recettes mémorisées (' + o.recipes.length + ')</div>';
+      o.recipes.forEach(function(r) {
+        out += '<div class="meal-idea" style="background:var(--card);border-color:var(--border)"><span style="flex:1;min-width:120px">' + esc(r.name) + ' <span style="font-size:11px;color:var(--muted);font-weight:500">· ' + r.ings.length + ' ingr.</span></span>'
+          + '<button style="border:none;background:none;cursor:pointer;font-size:14px" title="Modifier les ingrédients" onclick="mealsEditRecipe(' + jsAttr(r.id) + ')">✏️</button>'
+          + '<button style="border:none;background:none;color:var(--muted);cursor:pointer;font-size:14px" title="Oublier cette recette" onclick="mealsDeleteRecipe(' + jsAttr(r.id) + ')">🗑️</button></div>';
+      });
+    }
+    el.innerHTML = out;
+    var s2 = document.getElementById('mealInRecipe'); if (s2 && keepSel) s2.value = keepSel;
+    var n2 = document.getElementById('mealInName'); if (n2) { if (keepName) n2.value = keepName; }
+    mealsRecipePicked();
+  }
+
+  // ── 📚 Recettes : le livre, avec photos, ingrédients et étapes ──
+  function kitRecipeSearch(v) { KIT_RECIPE_Q = v; kitRecipeListRefresh(); }
+  function kitRecipeGroup(g) { KIT_RECIPE_GROUP = g; renderRecipes(); }
+  function kitRecipeCardHtml(r) {
+    var thumb = r.photo ? '<img data-ph="' + esc(r.id) + '" alt="">' : '<span class="em">' + esc(r.emoji || '🍽️') + '</span>';
+    var meta = [r.time ? '⏱ ' + r.time : '', r.portions ? '👥 ' + r.portions : '', (r.ings || []).length + ' ingr.'].filter(Boolean).join(' · ');
+    return '<div class="kit-rc" onclick="kitOpenRecipe(' + jsAttr(r.id) + ')"><div class="th">' + thumb + '</div><div class="tx"><b>' + esc(r.name) + '</b><span>' + esc(meta) + '</span></div></div>';
+  }
+  function kitRecipeListHtml() {
+    var q = mealNorm(KIT_RECIPE_Q), all = mealAllRecipes().filter(function(r) {
+      if (KIT_RECIPE_GROUP && (r.cat || 'user') !== KIT_RECIPE_GROUP) return false;
+      return !q || mealNorm(r.name).indexOf(q) >= 0 || (r.ings || []).some(function(g) { return mealNorm(g.n).indexOf(q) >= 0; });
+    });
+    if (!all.length) return '<div class="empty"><div class="icon">📚</div>Aucune recette trouvée.</div>';
+    var out = '';
+    KIT_GROUPS.forEach(function(g) {
+      var l = all.filter(function(r) { return (r.cat || 'user') === g[0]; }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'fr'); });
+      if (!l.length) return;
+      out += '<div class="meal-sec">' + esc(g[1]) + ' (' + l.length + ')</div><div class="kit-rgrid">' + l.map(kitRecipeCardHtml).join('') + '</div>';
+    });
+    return out;
+  }
+  function kitRecipeListRefresh() { var l = document.getElementById('kit-rlist'); if (l) { l.innerHTML = kitRecipeListHtml(); kitFillPhotos(l); } }
+  function renderRecipes() {
+    if (!kitMount()) return;
+    var el = document.getElementById('courses-pane-recipes'); if (!el) return;
+    var cats = [['', 'Toutes']].concat(KIT_GROUPS.filter(function(g) { return mealAllRecipes().some(function(r) { return (r.cat || 'user') === g[0]; }); }).map(function(g) { return [g[0], g[1]]; }));
+    var out = '<div class="add-panel" style="margin-top:0"><div class="row1"><input type="text" id="kit-rq" placeholder="🔎 Chercher une recette ou un ingrédient…" value="' + esc(KIT_RECIPE_Q) + '" oninput="kitRecipeSearch(this.value)"></div>';
+    if (cats.length > 2) out += '<div class="kit-chips">' + cats.map(function(c) { return '<button class="' + (KIT_RECIPE_GROUP === c[0] ? 'on' : '') + '" onclick="kitRecipeGroup(' + jsAttr(c[0]) + ')">' + esc(c[1]) + '</button>'; }).join('') + '</div>';
+    if (KIT_CN_STATE === 'loading') out += '<p class="points-note" style="margin:8px 2px">⏳ Chargement des recettes co-NAÎTRE…</p>';
+    if (KIT_CN_STATE === 'err') out += '<p class="points-note" style="margin:8px 2px">⚠️ Les recettes co-NAÎTRE n\'ont pas pu être chargées (fichier recettes_data.js introuvable ou pas de connexion).</p>';
+    out += '</div><div id="kit-rlist">' + kitRecipeListHtml() + '</div>';
+    el.innerHTML = out;
+    kitFillPhotos(el);
+  }
+  function kitCloseRecipe() { var m = document.getElementById('kit-modal'); if (m) m.remove(); KIT_OPEN_RECIPE = ''; document.body.style.overflow = ''; }
+  var KIT_RPOR = 0, KIT_OPEN_ENTRY = '';
+  function kitRecipeIngsHtml(r) {
+    var b = mealBasePor(r), f = b && KIT_RPOR ? KIT_RPOR / b : 1;
+    return (r.ings && r.ings.length) ? mealScaleIngs(r.ings, f).map(function(g) { return '<li><b>' + esc(g.q || '') + '</b> ' + esc(g.n) + '</li>'; }).join('') : '';
+  }
+  function kitRPor(d) {
+    var r = mealRecipeById(KIT_OPEN_RECIPE); if (!r) return;
+    KIT_RPOR = Math.max(1, Math.min(40, (KIT_RPOR || mealBasePor(r) || 1) + d));
+    var ul = document.getElementById('kit-ings'); if (ul) ul.innerHTML = kitRecipeIngsHtml(r);
+    var n = document.getElementById('kit-rpor-n'); if (n) n.textContent = KIT_RPOR;
+    var hint = document.getElementById('kit-rpor-hint'); if (hint) hint.style.display = (KIT_RPOR !== mealBasePor(r)) ? '' : 'none';
+    var bt = document.getElementById('kit-rpor-btn'); if (bt) bt.textContent = KIT_RPOR;
+    var sv = document.getElementById('kit-rpor-save'); if (sv) sv.textContent = '✅ Enregistrer ' + KIT_RPOR + ' parts pour ce repas';
+  }
+  function kitOpenRecipe(id, entryId) {
+    var r = mealRecipeById(id); if (!r) return;
+    var ent = entryId ? mealsGet().entries.filter(function(x) { return x.id === entryId; })[0] : null, b = mealBasePor(r);
+    KIT_OPEN_RECIPE = id; KIT_OPEN_ENTRY = ent ? ent.id : ''; KIT_RPOR = b ? ((ent && ent.por) || b) : 0;
+    var old = document.getElementById('kit-modal'); if (old) old.remove();
+    var wk = mealsWeekStart(), h = '<div class="kit-sheet" onclick="event.stopPropagation()"><button class="kit-x" onclick="kitCloseRecipe()" aria-label="Fermer">✕</button>';
+    if (r.photo) h += '<img class="kit-ph" src="' + esc(r.photo) + '" alt="">';
+    h += '<h2>' + esc((r.emoji ? r.emoji + ' ' : '') + r.name) + '</h2>';
+    var meta = [r.time ? '⏱ ' + esc(r.time) : '', r.cat ? esc(kitGroupLabel(r.cat)) : ''].filter(Boolean);
+    if (meta.length) h += '<div class="kit-meta">' + meta.join(' · ') + '</div>';
+    if (r.note) h += '<p class="kit-note">' + esc(r.note) + '</p>';
+    h += '<div class="meal-sec">🛒 Ingrédients</div>';
+    if (b) {
+      h += '<div class="kit-por"><span>👥 Nombre de parts</span><button onclick="kitRPor(-1)" aria-label="Moins de parts">−</button><b id="kit-rpor-n">' + KIT_RPOR + '</b><button onclick="kitRPor(1)" aria-label="Plus de parts">+</button></div>';
+      h += '<div class="kit-por-hint" id="kit-rpor-hint" style="' + (KIT_RPOR !== b ? '' : 'display:none') + '">Recette d\'origine : ' + b + ' parts. Les quantités écrites dans le texte des étapes restent celles de la recette d\'origine.</div>';
+    } else if (r.portions) { h += '<div class="kit-meta">👥 ' + esc(String(r.portions)) + ' pers.</div>'; }
+    h += (r.ings && r.ings.length) ? '<ul class="kit-ings" id="kit-ings">' + kitRecipeIngsHtml(r) + '</ul>' : '<p class="points-note">Pas d\'ingrédients enregistrés pour cette recette.</p>';
+    if (r.steps && r.steps.length) h += '<div class="meal-sec">👩‍🍳 Préparation</div><ol class="kit-steps">' + r.steps.map(function(s) { return '<li>' + esc(s) + '</li>'; }).join('') + '</ol>';
+    if (ent) {
+      h += '<div class="add-panel" style="margin:14px 0 0"><div class="meal-sec" style="margin-top:0">🍽️ Ce repas : ' + esc(ent.name) + '</div>';
+      if (b) h += '<button id="kit-rpor-save" onclick="mealsSetPor(' + jsAttr(ent.id) + ',KIT_RPOR)">✅ Enregistrer ' + KIT_RPOR + ' parts pour ce repas</button>' + '<p class="points-note" style="margin:8px 0 0">La liste de courses est recalculée avec ce nombre de parts.</p>';
+      else h += '<button class="ghost" onclick="kitCloseRecipe()">Fermer</button>';
+      h += '</div></div>';
+    } else {
+      h += '<div class="add-panel" style="margin:14px 0 0"><div class="meal-sec" style="margin-top:0">📅 Ajouter à ma semaine</div>';
+      h += '<div class="row1"><select id="kit-rtarget">' + mealsTargetOptions(wk, 'idea') + '</select></div>';
+      h += '<button onclick="kitAddRecipeToWeek(' + jsAttr(r.id) + ')">➕ Ajouter ce repas' + (b ? ' (pour <span id="kit-rpor-btn">' + KIT_RPOR + '</span> parts)' : '') + '</button></div></div>';
+    }
+    var m = document.createElement('div'); m.id = 'kit-modal'; m.className = 'kit-modal'; m.setAttribute('onclick', 'kitCloseRecipe()'); m.innerHTML = h;
+    document.body.appendChild(m); document.body.style.overflow = 'hidden';
+  }
+  function kitAddRecipeToWeek(id) {
+    var r = mealRecipeById(id); if (!r) return;
+    var target = (document.getElementById('kit-rtarget') || {}).value || 'idea', by = kitPersons().length ? kitPersons()[0].id : '';
+    var b = mealBasePor(r), n = b ? (KIT_RPOR || b) : 0;
+    kitCloseRecipe();
+    COURSES_TAB = 'meals'; renderCoursesTabs();
+    mealsCreateEntry(r.name, by, target, r.id, b ? mealScaleIngs(r.ings, n / b) : r.ings, n);
+    try { if (KIT_HOST.onTab) KIT_HOST.onTab('meals'); } catch (e) {}
+  }
   function renderCourses() {
+    if (!kitMount()) return;
     try { renderCoursesTabs(); } catch (e) {}
     var list = getCourses();
-    var el = document.getElementById('list-courses');
+    var el = document.getElementById('list-courses'); if (!el) return;
     if (list.length === 0) {
-      el.innerHTML = '<div class="empty"><div class="icon">🛒</div>Ta liste de courses est vide.<br>Ajoute un article ci-dessus.</div>';
+      el.innerHTML = '<div class="empty"><div class="icon">🛒</div>Ta liste de courses est vide.<br>Ajoute un article ci-dessus, ou place un repas dans l\'onglet 🍽️ Repas.</div>';
       return;
     }
     var out = '';
@@ -7120,6 +7370,17 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       out += '</div>';
     });
     el.innerHTML = out;
+  }
+
+  // ═════ FIN DU BLOC REPAS · COURSES · RECETTES ═════
+
+  function populateGroupSelects() {
+    ['daily','weekly','monthly','exceptional'].forEach(function(period) {
+      var sel = document.getElementById('room-' + period);
+      if (sel) sel.innerHTML = ROOMS.map(function(r){ return '<option value="' + r.id + '">' + r.label + '</option>'; }).join('');
+    });
+    var argentSel = document.getElementById('room-argent');
+    if (argentSel) argentSel.innerHTML = MONEY_CATS.map(function(c){ return '<option value="' + c.id + '">' + c.label + '</option>'; }).join('');
   }
 
   // ── Points / implication de chacun ──
