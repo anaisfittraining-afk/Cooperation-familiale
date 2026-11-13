@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-13-semaine-adulte2';
+window.MH_BUILD_VERSION = '2026-11-13-agenda-famille';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -842,6 +842,42 @@ window.MH_BUILD_VERSION = '2026-11-13-semaine-adulte2';
     box-shadow: 0 1px 3px rgba(38,49,42,0.06);
   }
   .hub-item:active { background: #FBF8F0; }
+  /* 📅 Agenda partagé */
+  .ag-nav { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin: 4px 0 10px; }
+  .ag-nav button { border: none; background: #E7EEE1; color: #2C4432; border-radius: 50%; width: 36px; height: 36px; font-size: 18px; cursor: pointer; }
+  .ag-nav .t { font-weight: 800; font-size: 16px; text-transform: capitalize; cursor: pointer; }
+  .ag-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 3px; }
+  .ag-dow { font-size: 11px; font-weight: 800; color: var(--muted); text-align: center; padding: 2px 0; }
+  .ag-cell { border: 1px solid var(--border); background: var(--card); border-radius: 10px; min-height: 50px; padding: 3px 1px; display: flex; flex-direction: column; align-items: center; gap: 2px; cursor: pointer; font: inherit; color: var(--text); }
+  .ag-cell.out { opacity: .4; }
+  .ag-cell .n { font-size: 12.5px; font-weight: 700; width: 22px; height: 22px; display: flex; align-items: center; justify-content: center; }
+  .ag-cell.today .n { background: var(--green); color: #fff; border-radius: 50%; }
+  .ag-cell.sel { border-color: var(--green); box-shadow: 0 0 0 2px rgba(63,93,70,.25); }
+  .ag-dots { display: flex; gap: 2px; flex-wrap: wrap; justify-content: center; max-width: 34px; }
+  .ag-dots i { width: 6px; height: 6px; border-radius: 50%; display: block; }
+  .ag-dayhead { font-weight: 800; font-size: 15px; margin: 16px 0 4px; }
+  .ag-dayhead::first-letter { text-transform: uppercase; }
+  .ag-abs { font-size: 13px; color: var(--muted); background: #F3EFE3; border-radius: 10px; padding: 6px 10px; margin: 6px 0; }
+  .ag-empty { color: var(--muted); font-size: 13.5px; padding: 8px 2px; }
+  .ag-ev, .ag-up { background: var(--card); border: 1px solid var(--border); border-radius: 14px; padding: 10px 12px; margin: 8px 0; display: flex; gap: 10px; }
+  .ag-ev .dot, .ag-up .dot { width: 10px; height: 10px; border-radius: 50%; margin-top: 5px; flex: none; }
+  .ag-ev .tt { font-weight: 800; font-size: 14.5px; }
+  .ag-ev .meta, .ag-up .meta { font-size: 12.5px; color: var(--muted); margin-top: 2px; line-height: 1.5; }
+  .ag-up { cursor: pointer; padding: 8px 12px; margin: 6px 0; font-size: 14px; }
+  .ag-act { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 8px; }
+  .ag-btn { border: 1px solid var(--border); background: #fff; border-radius: 999px; padding: 7px 12px; font: inherit; font-size: 12.5px; font-weight: 700; cursor: pointer; color: var(--text); }
+  .ag-btn.pri { background: var(--green); color: #fff; border-color: var(--green); }
+  .ag-btn.g { background: #E3ECF2; color: #2F4F68; border-color: #C9DAE6; }
+  .ag-gbox { margin-top: 22px; background: #F3F6EC; border: 1px solid var(--border); border-radius: 16px; padding: 12px 14px; }
+  .ag-form { background: var(--card); border: 1px solid var(--border); border-radius: 16px; padding: 14px; }
+  .ag-form label.l { display: block; font-size: 12px; font-weight: 800; color: var(--muted); margin: 12px 0 4px; }
+  .ag-form label.l small { font-weight: 500; }
+  .ag-form input[type=text], .ag-form input[type=date], .ag-form input[type=time], .ag-form select, .ag-form textarea { width: 100%; box-sizing: border-box; border: 1px solid var(--border); border-radius: 10px; padding: 9px 10px; font: inherit; font-size: 16px; background: #fff; color: var(--text); }
+  .ag-two { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+  .ag-chips { display: flex; gap: 6px; flex-wrap: wrap; }
+  .ag-chip { display: inline-flex; align-items: center; gap: 6px; border: 1px solid var(--border); border-radius: 999px; padding: 6px 11px; font-size: 13px; font-weight: 700; background: #fff; cursor: pointer; }
+  .ag-chip input { margin: 0; }
+  .ag-err { color: #B33A2E; font-size: 13px; font-weight: 700; margin-top: 10px; min-height: 0; }
   .hub-ico { width: 42px; height: 42px; border-radius: 12px; flex-shrink: 0; display: flex; align-items: center; justify-content: center; }
   .hub-ico svg { width: 19px; height: 19px; }
   .hub-text { flex: 1; min-width: 0; }
@@ -1142,6 +1178,7 @@ window.MH_BUILD_VERSION = '2026-11-13-semaine-adulte2';
     </div>
     <div id="todayNavBox"></div>
     <div id="today-partage"></div>
+    <div id="today-agenda"></div>
     <div class="today-section" id="today-section-imperatifs">
       <div class="today-subhead">🎯 Vos impératifs de la journée</div>
       <div id="list-today-imperatifs"></div>
@@ -1629,6 +1666,7 @@ window.MH_BUILD_VERSION = '2026-11-13-semaine-adulte2';
 
   <div class="view" id="view-taches"></div>
   <div class="view" id="view-famille"></div>
+  <div class="view" id="view-agenda"></div>
 
   <div class="view" id="view-journee"></div>
   <div class="view" id="view-afaire"></div>
@@ -6510,6 +6548,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       nv.innerHTML = '<button data-view="journee" onclick="showView(\'journee\', this)"><span class="ic" style="font-size:26px;line-height:38px">🌈</span><span class="lb">Ma journée</span></button>' +
         '<button data-view="afaire" onclick="showView(\'afaire\', this)"><span class="ic" style="font-size:26px;line-height:38px">🧹</span><span class="lb">À faire</span></button>' +
         '<button data-view="monargent" onclick="showView(\'monargent\', this)"><span class="ic" style="width:40px;height:40px;display:inline-block">' + (mhIco('poche') || '<span style="font-size:26px;line-height:38px">💶</span>') + '</span><span class="lb">Mon argent</span></button>';
+      nv.innerHTML += '<button data-view="agenda" onclick="showView(\'agenda\', this)"><span class="ic" style="font-size:26px;line-height:38px">📅</span><span class="lb">Agenda</span></button>';
       nv.style.display = 'flex';
     }
     JR_PID = MEMBER_ID; FICHE_TAB = MEMBER_ID;
@@ -6899,6 +6938,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
 
     renderImperatifsDuJourHome();
     try { renderPartageToday(); } catch (e) {}
+    try { renderAgendaToday(); } catch (e) {}
 
     var dailyTasks = (all.daily || []).filter(function(t) { return !taskIsPersonalOnly(t) && !trGivenOn('daily', t.id, D); });
     var dailyChecks = ((getChecksAll().daily || {})[D]) || {};
@@ -9451,11 +9491,12 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   // Mes accès). NAV_PARENT dit, pour un sous-écran donné, quel onglet du bas doit rester actif.
   var NAV_PARENT = {
     daily: 'taches', weekly: 'taches', monthly: 'taches', exceptional: 'taches', argent: 'argent', histo: 'histo', planning: 'taches', semaine: 'taches',
-    bonus: 'famille', malus: 'famille', points: 'famille', acces: 'famille', codes: 'famille', partage: 'famille', afaire: 'afaire', rappel: 'famille', fiches: 'famille', tuto: 'famille', journee: 'famille'
+    bonus: 'famille', malus: 'famille', points: 'famille', acces: 'famille', codes: 'famille', partage: 'famille', afaire: 'afaire', rappel: 'famille', fiches: 'famille', tuto: 'famille', journee: 'famille', agenda: 'famille'
   };
   var HUB_ICONS_MH = {
     planning: { bg: '#E7EEE1', fg: '#3F5D46', svg: '<span style="font-size:20px;line-height:1">🗓️</span>' },
     partage: { bg: '#FBE9DF', fg: '#B96A46', svg: '<span style="font-size:20px;line-height:1">💞</span>' },
+    agenda: { bg: '#E3ECF2', fg: '#3D5A73', svg: '<span style="font-size:20px;line-height:1">📅</span>' },
     semaine: { bg: '#FBE9DF', fg: '#B96A46', svg: MH_ICO_SEMAINE },
     journee: { bg: '#FBE9DF', fg: '#B96A46', svg: '<span style="font-size:20px;line-height:1">🌈</span>' },
     daily: { bg: '#F7E4D8', fg: '#8A4A21', svgOld: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.7" stroke-linecap="round"><circle cx="12" cy="12" r="4.2"/><path d="M12 2.5v3M12 18.5v3M4.4 4.4l2.1 2.1M17.5 17.5l2.1 2.1M2.5 12h3M18.5 12h3M4.4 19.6l2.1-2.1M17.5 6.5l2.1-2.1"/></svg>' },
@@ -9526,7 +9567,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
   function paWeekNum(wk) { return parseInt(String(wk).split('-W')[1], 10); }
   function paWeeks(n) { var out = [], k = isoWeekKeyForDate(weekNowISO()); for (var i = 0; i < n; i++) { out.push(k); k = nextWeekKey(k); } return out; }
-  function paSlotDate(wk, slot) { var m = paMonday(wk); return new Date(m.getTime() + ((slot.day || 6) - 1) * 86400000); }
+  function paSlotDate(wk, slot) { var m = paMonday(wk); return new Date(m.getTime() + (((slot.day || 6) - weekStartCfg().day + 7) % 7) * 86400000); } // paMonday = 1er jour de la semaine (jour de début choisi)
   function paSlotText(slot) { var t = String(slot.time || '').replace(':', 'h').replace(/h00$/, 'h'); return PA_DAYS[slot.day || 6] + (t ? ' à ' + t : ''); }
   function paPlanned(o, wk) { return o.acts.filter(function(a) { return a.weeks && a.weeks[wk]; }); }
   function paPersonLabel(id) { var p = PERSONS.filter(function(x) { return x.id === id; })[0]; return p ? p.label : ''; }
@@ -9612,7 +9653,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       out += '<div class="pa-empty">Pas encore d\'activité prévue cette semaine' + (parent ? ' : choisis-en une plus bas et place-la dans cette semaine.' : '.') + '</div>';
     }
     if (parent) {
-      out += '<div class="pa-slot">Ce moment, c\'est le <select id="pa-slot-day" onchange="paSetSlot()">' + [1, 2, 3, 4, 5, 6, 7].map(function(d) { return '<option value="' + d + '"' + (d === (o.slot.day || 6) ? ' selected' : '') + '>' + PA_DAYS[d] + '</option>'; }).join('') + '</select> à <input id="pa-slot-time" type="time" value="' + esc(o.slot.time || '17:00') + '" onchange="paSetSlot()"></div>';
+      out += '<div class="pa-slot">Ce moment, c\'est le <select id="pa-slot-day" onchange="paSetSlot()">' + [1, 2, 3, 4, 5, 6, 7].map(function(k) { return ((weekStartCfg().day - 1 + k - 1) % 7) + 1; }).map(function(d) { return '<option value="' + d + '"' + (d === (o.slot.day || 6) ? ' selected' : '') + '>' + PA_DAYS[d] + '</option>'; }).join('') + '</select> à <input id="pa-slot-time" type="time" value="' + esc(o.slot.time || '17:00') + '" onchange="paSetSlot()"></div>';
     }
     out += '</div>';
 
@@ -9694,12 +9735,294 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       + '<small>' + (acts.length ? esc(acts.map(function(a) { return a.name; }).join(' · ')) : 'Aucune activité prévue : choisissez-en une ensemble') + '</small></div><span class="hub-chev">›</span></div>';
   }
 
+  // ══════════════ 📅 Agenda partagé de la famille ══════════════
+  // Les événements sont enregistrés dans UNE clé « mh_agenda_v1 » (synchronisée comme tout le reste) : tous les appareils de la
+  // famille voient le même agenda. Les parents (y compris le 2ᵉ adulte) ajoutent / modifient / suppriment et peuvent envoyer les
+  // événements dans Google Agenda ; les enfants (avec leur code) consultent seulement.
+  function agKey() { return nsKey('mh_agenda_v1'); }
+  function agAll() { try { var a = JSON.parse(localStorage.getItem(agKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function agSave(a) {
+    try { localStorage.setItem(agKey(), JSON.stringify(a)); } catch (e) { return false; }
+    try { scheduleSyncPublish(); } catch (e) {}
+    return true;
+  }
+  var AG_MONTH = null, AG_SEL = null, AG_EDIT = null, AG_DAYS = ['dimanche', 'lundi', 'mardi', 'mercredi', 'jeudi', 'vendredi', 'samedi'];
+  var AG_REP_LABEL = { none: 'Une seule fois', weekly: 'Chaque semaine', monthly: 'Chaque mois', yearly: 'Chaque année' };
+  function agParse(ds) { var p = String(ds).split('-').map(Number); return new Date(Date.UTC(p[0], p[1] - 1, p[2])); }
+  function agISO(d) { return d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1) + '-' + pad2(d.getUTCDate()); }
+  function agHm(t) { return String(t || '').replace(':', 'h').replace(/h00$/, 'h'); }
+  function agDateLabel(ds) {
+    var d = agParse(ds), t = todayISO();
+    if (ds === t) return 'Aujourd\'hui';
+    if (ds === addDaysISO(t, 1)) return 'Demain';
+    return AG_DAYS[d.getUTCDay()] + ' ' + d.getUTCDate() + ' ' + JR_MONTHS[d.getUTCMonth()];
+  }
+  function agNewId() { return 'ag' + Date.now().toString(36) + Math.random().toString(36).slice(2, 6); }
+  function agPerson(pid) { return (PERSONS || []).filter(function(p) { return p.id === pid; })[0] || null; }
+  function agWho(ev) { return (ev.who || []).filter(function(pid) { return !!agPerson(pid); }); }
+  function agWhoLabel(ev) {
+    var w = agWho(ev);
+    return w.length ? w.map(function(pid) { return agPerson(pid).label; }).join(', ') : 'Toute la famille';
+  }
+  function agColor(ev) { var w = agWho(ev); return (w.length === 1 && agPerson(w[0]).color) || '#3F5D46'; }
+  function agSingle(ev) { return !ev.rep || ev.rep === 'none'; }
+  function agLastDay(ev) { return (agSingle(ev) && ev.endDate && ev.endDate > ev.date) ? ev.endDate : ev.date; }
+  function agOccursOn(ev, ds) {
+    if (!ev || !ev.date) return false;
+    if (agSingle(ev)) return ds >= ev.date && ds <= agLastDay(ev);
+    if (ds < ev.date) return false;
+    var a = agParse(ev.date), b = agParse(ds);
+    if (ev.rep === 'weekly') return Math.round((b - a) / 86400000) % 7 === 0;
+    if (ev.rep === 'monthly') return a.getUTCDate() === b.getUTCDate();
+    if (ev.rep === 'yearly') return a.getUTCDate() === b.getUTCDate() && a.getUTCMonth() === b.getUTCMonth();
+    return false;
+  }
+  function agOn(list, ds) {
+    return list.filter(function(ev) { return agOccursOn(ev, ds); }).sort(function(x, y) {
+      var ax = x.allDay ? '' : (x.start || '99'), ay = y.allDay ? '' : (y.start || '99');
+      return ax < ay ? -1 : (ax > ay ? 1 : String(x.title).localeCompare(String(y.title)));
+    });
+  }
+  function agTimeLabel(ev, ds) {
+    var multi = agLastDay(ev) !== ev.date, s = '';
+    if (ev.allDay) s = 'Toute la journée';
+    else s = agHm(ev.start) + (ev.end && !multi ? ' – ' + agHm(ev.end) : '');
+    if (multi) { var a = agParse(ev.date), b = agParse(agLastDay(ev)); s += ' · du ' + a.getUTCDate() + ' ' + JR_MONTHS[a.getUTCMonth()] + ' au ' + b.getUTCDate() + ' ' + JR_MONTHS[b.getUTCMonth()]; }
+    return s;
+  }
+
+  // ── Grille du mois (la semaine démarre le jour choisi dans « Ma semaine ») ──
+  function agGridHtml(ym, list, today) {
+    var y = +ym.slice(0, 4), m = +ym.slice(5, 7) - 1, sd = weekStartCfg().day;
+    var first = new Date(Date.UTC(y, m, 1)), dow = first.getUTCDay() || 7, off = (dow - sd + 7) % 7;
+    var dim = new Date(Date.UTC(y, m + 1, 0)).getUTCDate(), rows = Math.ceil((off + dim) / 7);
+    var L = ['', 'L', 'M', 'M', 'J', 'V', 'S', 'D'], out = '<div class="ag-grid">';
+    for (var i = 0; i < 7; i++) out += '<div class="ag-dow">' + L[((sd - 1 + i) % 7) + 1] + '</div>';
+    for (var c = 0; c < rows * 7; c++) {
+      var d = new Date(first.getTime() + (c - off) * 86400000), ds = agISO(d), inM = d.getUTCMonth() === m;
+      var evs = agOn(list, ds), dots = evs.slice(0, 4).map(function(ev) { return '<i style="background:' + agColor(ev) + '"></i>'; }).join('');
+      out += '<button type="button" class="ag-cell' + (inM ? '' : ' out') + (ds === today ? ' today' : '') + (ds === AG_SEL ? ' sel' : '') + '" onclick="agSelect(' + jsAttr(ds) + ')">' +
+        '<span class="n">' + d.getUTCDate() + '</span><span class="ag-dots">' + dots + '</span></button>';
+    }
+    return out + '</div>';
+  }
+  function agEventCardHtml(ev, ds, parent) {
+    var h = '<div class="ag-ev"><span class="dot" style="background:' + agColor(ev) + '"></span><div style="flex:1;min-width:0">' +
+      '<div class="tt">' + esc(ev.title) + '</div>' +
+      '<div class="meta">🕒 ' + esc(agTimeLabel(ev, ds)) + (ev.rep && ev.rep !== 'none' ? ' · 🔁 ' + AG_REP_LABEL[ev.rep].toLowerCase() : '') + '<br>👪 ' + esc(agWhoLabel(ev)) +
+      (ev.place ? '<br>📍 ' + esc(ev.place) : '') + (ev.note ? '<br>📝 ' + esc(ev.note) : '') + '</div>';
+    if (parent) {
+      h += '<div class="ag-act"><button type="button" class="ag-btn g" onclick="agGoogle(' + jsAttr(ev.id) + ')">📤 Google Agenda</button>' +
+        '<button type="button" class="ag-btn" onclick="agEditEv(' + jsAttr(ev.id) + ')">✏️ Modifier</button>' +
+        '<button type="button" class="ag-btn" onclick="agDel(' + jsAttr(ev.id) + ')">🗑️</button></div>' +
+        (ev.gsent ? '<div class="meta" style="margin-top:6px">✓ envoyé à Google Agenda le ' + esc(ev.gsent.split('-').reverse().slice(0, 2).join('/')) + '</div>' : '');
+    }
+    return h + '</div></div>';
+  }
+  function renderAgendaView() {
+    var el = document.getElementById('view-agenda'); if (!el) return;
+    var today = todayISO(), list = agAll(), parent = !MEMBER_MODE;
+    if (!AG_SEL) AG_SEL = today;
+    if (!AG_MONTH) AG_MONTH = AG_SEL.slice(0, 7);
+    var out = parent ? '<div class="back-link" onclick="showView(\'famille\', document.querySelector(\'nav.bottom button[data-view=famille]\'))">‹ Famille</div>' : '';
+    out += '<div class="section-head"><h2>📅 Agenda de la famille</h2>' + (parent && !AG_EDIT ? '<button type="button" class="ag-btn pri" onclick="agNew()">＋ Événement</button>' : '') + '</div>';
+    if (AG_EDIT && parent) { el.innerHTML = out + agFormHtml(list); return; }
+    var y = +AG_MONTH.slice(0, 4), m = +AG_MONTH.slice(5, 7) - 1;
+    out += '<div class="ag-nav"><button type="button" onclick="agMonth(-1)" aria-label="Mois précédent">‹</button>' +
+      '<div class="t" onclick="agToday()" title="Revenir à aujourd\'hui">' + JR_MONTHS[m] + ' ' + y + '</div>' +
+      '<button type="button" onclick="agMonth(1)" aria-label="Mois suivant">›</button></div>';
+    out += agGridHtml(AG_MONTH, list, today);
+    // détail du jour choisi
+    var evs = agOn(list, AG_SEL);
+    out += '<div class="ag-dayhead">' + esc(agDateLabel(AG_SEL)) + '</div>';
+    try {
+      (PERSONS || []).filter(function(p) { return p.role === 'enfant' && childAbsentOnDate(p.id, AG_SEL); }).forEach(function(p) {
+        out += '<div class="ag-abs">🏠 ' + esc(p.label) + ' n\'est pas là ce jour-là</div>';
+      });
+    } catch (e) {}
+    out += evs.length ? evs.map(function(ev) { return agEventCardHtml(ev, AG_SEL, parent); }).join('') :
+      '<div class="ag-empty">Rien de prévu ce jour-là.' + (parent ? ' <a href="#" onclick="agNew();return false">Ajouter un événement</a>' : '') + '</div>';
+    // à venir
+    var up = [], n = 0, seen = {};
+    for (var i = 0; i < 45 && n < 8; i++) {
+      var ds = addDaysISO(today, i);
+      agOn(list, ds).forEach(function(ev) { if (n < 8 && !seen[ev.id]) { seen[ev.id] = 1; up.push({ ds: ds, ev: ev }); n++; } });
+    }
+    if (up.length) {
+      out += '<div class="cat-title" style="margin-top:18px">À venir</div>' + up.map(function(u) {
+        return '<div class="ag-up" onclick="agSelect(' + jsAttr(u.ds) + ')"><span class="dot" style="background:' + agColor(u.ev) + '"></span><div style="flex:1;min-width:0"><b>' + esc(u.ev.title) + '</b>' +
+          '<div class="meta">' + esc(agDateLabel(u.ds)) + (u.ev.allDay ? '' : ' · ' + esc(agHm(u.ev.start))) + ' · ' + esc(agWhoLabel(u.ev)) + '</div></div></div>';
+      }).join('');
+    }
+    if (parent) {
+      var fresh = list.filter(function(ev) { return !ev.gsent; }).length;
+      out += '<div class="ag-gbox"><div class="cat-title">📤 Google Agenda (réservé aux parents)</div>' +
+        '<p class="points-note" style="margin-top:0">Sur chaque événement, le bouton « Google Agenda » ouvre Google Agenda avec tout déjà rempli : il ne reste qu\'à appuyer sur « Enregistrer ». ' +
+        'Pour en envoyer plusieurs d\'un coup, télécharge le fichier ci-dessous puis, dans Google Agenda sur ordinateur : ⚙️ Paramètres › Importer et exporter › Importer.</p>' +
+        '<div class="ag-act"><button type="button" class="ag-btn g"' + (fresh ? '' : ' disabled style="opacity:.5"') + ' onclick="agExport(false)">📥 Les nouveaux événements (' + fresh + ')</button>' +
+        '<button type="button" class="ag-btn"' + (list.length ? '' : ' disabled style="opacity:.5"') + ' onclick="agExport(true)">Tout exporter (' + list.length + ')</button></div></div>';
+    }
+    el.innerHTML = out;
+  }
+  function agFormHtml(list) {
+    var isNew = AG_EDIT === 'new', ev = isNew ? { date: AG_SEL || todayISO(), allDay: false, start: '', end: '', who: [], rep: 'none' } : (list.filter(function(e) { return e.id === AG_EDIT; })[0] || null);
+    if (!ev) { AG_EDIT = null; return ''; }
+    var w = agWho(ev), kids = PERSONS || [];
+    return '<div class="ag-form"><div class="cat-title">' + (isNew ? 'Nouvel événement' : 'Modifier l\'événement') + '</div>' +
+      '<label class="l" for="agTitle">Titre</label><input type="text" id="agTitle" maxlength="80" placeholder="Ex. : dentiste de Tom, anniversaire de mamie…" value="' + esc(ev.title || '') + '">' +
+      '<div class="ag-two"><div><label class="l" for="agDate">Date</label><input type="date" id="agDate" value="' + esc(ev.date || '') + '"></div>' +
+      '<div><label class="l" for="agEndD">Dernier jour <small>(si plusieurs jours)</small></label><input type="date" id="agEndD" value="' + esc(agSingle(ev) && ev.endDate ? ev.endDate : '') + '"></div></div>' +
+      '<label class="ag-chip" style="margin-top:10px"><input type="checkbox" id="agAllDay"' + (ev.allDay ? ' checked' : '') + ' onchange="agAllDayChange()"> Toute la journée</label>' +
+      '<div class="ag-two" id="agTimes"' + (ev.allDay ? ' style="display:none"' : '') + '><div><label class="l" for="agStart">Début</label><input type="time" id="agStart" value="' + esc(ev.start || '') + '"></div>' +
+      '<div><label class="l" for="agEndT">Fin <small>(facultatif)</small></label><input type="time" id="agEndT" value="' + esc(ev.end || '') + '"></div></div>' +
+      '<label class="l">Pour qui ?</label><div class="ag-chips"><label class="ag-chip"><input type="checkbox" id="agWhoAll"' + (w.length ? '' : ' checked') + ' onchange="agWhoClick(this)"> Toute la famille</label>' +
+      kids.map(function(p) { return '<label class="ag-chip"><input type="checkbox" class="agWho" value="' + esc(p.id) + '"' + (w.indexOf(p.id) >= 0 ? ' checked' : '') + ' onchange="agWhoClick(this)"> ' + esc(p.label) + '</label>'; }).join('') + '</div>' +
+      '<label class="l" for="agPlace">Lieu <small>(facultatif)</small></label><input type="text" id="agPlace" maxlength="100" value="' + esc(ev.place || '') + '">' +
+      '<label class="l" for="agNote">Note <small>(facultatif)</small></label><textarea id="agNote" rows="2" maxlength="300">' + esc(ev.note || '') + '</textarea>' +
+      '<label class="l" for="agRep">Répéter</label><select id="agRep">' + ['none', 'weekly', 'monthly', 'yearly'].map(function(k) { return '<option value="' + k + '"' + ((ev.rep || 'none') === k ? ' selected' : '') + '>' + AG_REP_LABEL[k] + '</option>'; }).join('') + '</select>' +
+      '<div id="agErr" class="ag-err"></div>' +
+      '<div class="ag-act" style="margin-top:12px"><button type="button" class="ag-btn pri" onclick="agSaveEv()">Enregistrer</button><button type="button" class="ag-btn" onclick="agCancel()">Annuler</button>' +
+      (isNew ? '' : '<button type="button" class="ag-btn" onclick="agDel(' + jsAttr(ev.id) + ')">🗑️ Supprimer</button>') + '</div></div>';
+  }
+  function agSelect(ds) { AG_SEL = ds; AG_MONTH = ds.slice(0, 7); renderAgendaView(); }
+  function agToday() { AG_SEL = todayISO(); AG_MONTH = AG_SEL.slice(0, 7); renderAgendaView(); }
+  function agMonth(n) {
+    var y = +AG_MONTH.slice(0, 4), m = +AG_MONTH.slice(5, 7) - 1 + n;
+    var d = new Date(Date.UTC(y, m, 1)); AG_MONTH = d.getUTCFullYear() + '-' + pad2(d.getUTCMonth() + 1);
+    renderAgendaView();
+  }
+  function agNew() { if (MEMBER_MODE) return; AG_EDIT = 'new'; renderAgendaView(); window.scrollTo(0, 0); }
+  function agEditEv(id) { if (MEMBER_MODE) return; AG_EDIT = id; renderAgendaView(); window.scrollTo(0, 0); }
+  function agCancel() { AG_EDIT = null; renderAgendaView(); }
+  function agAllDayChange() { var c = document.getElementById('agAllDay'), t = document.getElementById('agTimes'); if (c && t) t.style.display = c.checked ? 'none' : ''; }
+  function agWhoClick(cb) {
+    var all = document.getElementById('agWhoAll'), ps = document.querySelectorAll('.agWho');
+    if (cb === all) { if (all.checked) { for (var i = 0; i < ps.length; i++) ps[i].checked = false; } else all.checked = true; }
+    else if (cb.checked) all.checked = false;
+    else if (!document.querySelector('.agWho:checked')) all.checked = true;
+  }
+  function agSaveEv() {
+    if (MEMBER_MODE) return;
+    var g = function(id) { var e = document.getElementById(id); return e ? e.value : ''; };
+    var err = function(m) { var e = document.getElementById('agErr'); if (e) e.textContent = m; };
+    var title = g('agTitle').trim(), date = g('agDate'), endDate = g('agEndD'), allDay = !!document.getElementById('agAllDay').checked, st = g('agStart'), en = g('agEndT'), rep = g('agRep') || 'none';
+    if (!title) return err('Donne un titre à l\'événement.');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(date)) return err('Choisis la date.');
+    if (endDate && endDate < date) return err('Le dernier jour est avant le début.');
+    if (!allDay) {
+      if (!st) return err('Indique l\'heure de début (ou coche « Toute la journée »).');
+      if (en && (!endDate || endDate === date) && en <= st) return err('L\'heure de fin doit être après le début.');
+    }
+    var who = [].slice.call(document.querySelectorAll('.agWho:checked')).map(function(x) { return x.value; });
+    var list = agAll(), ev = (AG_EDIT && AG_EDIT !== 'new') ? list.filter(function(e) { return e.id === AG_EDIT; })[0] : null;
+    if (!ev) { ev = { id: agNewId() }; list.push(ev); }
+    ev.title = title; ev.date = date; ev.endDate = (rep === 'none' && endDate && endDate > date) ? endDate : '';
+    ev.allDay = allDay; ev.start = allDay ? '' : st; ev.end = allDay ? '' : en; ev.who = who; ev.place = g('agPlace').trim(); ev.note = g('agNote').trim(); ev.rep = rep;
+    ev.ts = Date.now(); delete ev.gsent; // modifié : à renvoyer à Google si besoin
+    if (!agSave(list)) return err('Enregistrement impossible : la mémoire de l\'appareil est pleine.');
+    AG_EDIT = null; AG_SEL = date; AG_MONTH = date.slice(0, 7);
+    renderAgendaView();
+  }
+  function agDel(id) {
+    if (MEMBER_MODE) return;
+    var list = agAll(), ev = list.filter(function(e) { return e.id === id; })[0]; if (!ev) return;
+    var msg = 'Supprimer « ' + ev.title + ' » de l\'agenda de la famille ?' + (agSingle(ev) ? '' : ' (toutes les répétitions seront supprimées)') + (ev.gsent ? '\n\nAttention : il restera dans Google Agenda, à supprimer là-bas aussi.' : '');
+    if (!window.confirm(msg)) return;
+    agSave(list.filter(function(e) { return e.id !== id; }));
+    AG_EDIT = null; renderAgendaView();
+  }
+
+  // ── Envoi vers Google Agenda (parents uniquement) ──
+  function agTz() { try { return Intl.DateTimeFormat().resolvedOptions().timeZone || ''; } catch (e) { return ''; } }
+  function agCompact(ds) { return String(ds).replace(/-/g, ''); }
+  // Début / fin de l'événement (fin par défaut = début + 1 h)
+  function agSpan(ev) {
+    var last = agLastDay(ev);
+    if (ev.allDay) return { allDay: true, d1: ev.date, d2: last };
+    var s = ev.start || '09:00', e = ev.end;
+    if (!e || (last === ev.date && e <= s)) { var h = parseInt(s.slice(0, 2), 10) + 1; e = h >= 24 ? '23:59' : pad2(h) + ':' + s.slice(3, 5); }
+    return { allDay: false, d1: ev.date, t1: s, d2: last, t2: e };
+  }
+  var AG_RRULE = { weekly: 'FREQ=WEEKLY', monthly: 'FREQ=MONTHLY', yearly: 'FREQ=YEARLY' };
+  function agGoogleUrl(ev) {
+    var sp = agSpan(ev), dates;
+    if (sp.allDay) dates = agCompact(sp.d1) + '/' + agCompact(agISO(new Date(agParse(sp.d2).getTime() + 86400000)));
+    else dates = agCompact(sp.d1) + 'T' + sp.t1.replace(':', '') + '00/' + agCompact(sp.d2) + 'T' + sp.t2.replace(':', '') + '00';
+    var det = (ev.note ? ev.note + '\n\n' : '') + 'Pour : ' + agWhoLabel(ev) + '\n(ajouté depuis l\'agenda de la famille)';
+    var u = 'https://calendar.google.com/calendar/render?action=TEMPLATE&text=' + encodeURIComponent(ev.title) + '&dates=' + dates + '&details=' + encodeURIComponent(det);
+    if (ev.place) u += '&location=' + encodeURIComponent(ev.place);
+    if (AG_RRULE[ev.rep]) u += '&recur=' + encodeURIComponent('RRULE:' + AG_RRULE[ev.rep]);
+    var tz = agTz(); if (tz && !sp.allDay) u += '&ctz=' + encodeURIComponent(tz);
+    return u;
+  }
+  function agMarkSent(ids) {
+    var list = agAll(), t = todayISO();
+    list.forEach(function(e) { if (ids.indexOf(e.id) >= 0) e.gsent = t; });
+    agSave(list);
+  }
+  function agGoogle(id) {
+    if (MEMBER_MODE) return;
+    var ev = agAll().filter(function(e) { return e.id === id; })[0]; if (!ev) return;
+    var w = window.open(agGoogleUrl(ev), '_blank', 'noopener');
+    if (!w) { window.location.href = agGoogleUrl(ev); return; }
+    agMarkSent([id]); renderAgendaView();
+  }
+  function agIcsText(t) { return String(t || '').replace(/\\/g, '\\\\').replace(/\r?\n/g, '\\n').replace(/,/g, '\\,').replace(/;/g, '\\;'); }
+  function agIcsFold(line) { var out = [], l = line; while (l.length > 60) { out.push(l.slice(0, 60)); l = ' ' + l.slice(60); } out.push(l); return out.join('\r\n'); }
+  function agIcs(list) {
+    var tz = agTz(), now = new Date(), stamp = now.getUTCFullYear() + pad2(now.getUTCMonth() + 1) + pad2(now.getUTCDate()) + 'T' + pad2(now.getUTCHours()) + pad2(now.getUTCMinutes()) + pad2(now.getUTCSeconds()) + 'Z';
+    var L = ['BEGIN:VCALENDAR', 'VERSION:2.0', 'PRODID:-//Maisonnee//Agenda famille//FR', 'CALSCALE:GREGORIAN', 'METHOD:PUBLISH', 'X-WR-CALNAME:Agenda de la famille'];
+    list.forEach(function(ev) {
+      var sp = agSpan(ev), det = (ev.note ? ev.note + '\n' : '') + 'Pour : ' + agWhoLabel(ev);
+      L.push('BEGIN:VEVENT', 'UID:' + ev.id + '@maisonnee-agenda', 'DTSTAMP:' + stamp);
+      if (sp.allDay) { L.push('DTSTART;VALUE=DATE:' + agCompact(sp.d1), 'DTEND;VALUE=DATE:' + agCompact(agISO(new Date(agParse(sp.d2).getTime() + 86400000)))); }
+      else {
+        var p = tz ? ';TZID=' + tz : '';
+        L.push('DTSTART' + p + ':' + agCompact(sp.d1) + 'T' + sp.t1.replace(':', '') + '00', 'DTEND' + p + ':' + agCompact(sp.d2) + 'T' + sp.t2.replace(':', '') + '00');
+      }
+      if (AG_RRULE[ev.rep]) L.push('RRULE:' + AG_RRULE[ev.rep]);
+      L.push('SUMMARY:' + agIcsText(ev.title), 'DESCRIPTION:' + agIcsText(det));
+      if (ev.place) L.push('LOCATION:' + agIcsText(ev.place));
+      L.push('END:VEVENT');
+    });
+    L.push('END:VCALENDAR');
+    return L.map(agIcsFold).join('\r\n') + '\r\n';
+  }
+  function agExport(all) {
+    if (MEMBER_MODE) return;
+    var list = agAll().filter(function(ev) { return all || !ev.gsent; });
+    if (!list.length) return;
+    var txt = agIcs(list), name = 'agenda-famille.ics';
+    try {
+      var blob = new Blob([txt], { type: 'text/calendar;charset=utf-8' }), url = URL.createObjectURL(blob), a = document.createElement('a');
+      a.href = url; a.download = name; document.body.appendChild(a); a.click();
+      setTimeout(function() { document.body.removeChild(a); URL.revokeObjectURL(url); }, 800);
+    } catch (e) { window.open('data:text/calendar;charset=utf-8,' + encodeURIComponent(txt)); }
+    agMarkSent(list.map(function(e) { return e.id; }));
+    setTimeout(renderAgendaView, 300);
+  }
+
+  // ── Petits rappels : « Aujourd'hui » et accueil ──
+  function agSummary(evs) { return evs.slice(0, 3).map(function(ev) { return (ev.allDay ? '' : agHm(ev.start) + ' ') + ev.title; }).join(' · ') + (evs.length > 3 ? ' …' : ''); }
+  function renderAgendaToday() {
+    var box = document.getElementById('today-agenda'); if (!box) return;
+    var evs = agOn(agAll(), todayISO());
+    box.innerHTML = evs.length ? '<div class="pa-today" onclick="showView(\'agenda\', null)"><span class="em">📅</span><div class="tt">Aujourd\'hui · agenda de la famille<small>' + esc(agSummary(evs)) + '</small></div><span class="hub-chev">›</span></div>' : '';
+  }
+  function agHomeCardHtml() {
+    var list = agAll(), t = todayISO(), nxt = null, ds = '';
+    for (var i = 0; i < 60 && !nxt; i++) { ds = addDaysISO(t, i); var e = agOn(list, ds); if (e.length) nxt = e; }
+    return '<div class="pa-today" style="grid-column:1/-1;margin:0" onclick="showView(\'agenda\', null)"><span class="em">📅</span><div class="tt">Agenda de la famille<small>' +
+      (nxt ? esc(agDateLabel(ds)) + ' · ' + esc(agSummary(nxt)) : 'Rien de prévu pour l\'instant') + '</small></div><span class="hub-chev">›</span></div>';
+  }
+
   function renderFamilleHub() {
     var el = document.getElementById('view-famille');
     if (!el) return;
     el.innerHTML =
       '<div class="section-head"><h2>👪 Vie de famille</h2></div>' +
       (moduleOn('journee') ? hubItemHtmlMH('journee', 'Mes enfants', journeeHubSub()) : hubItemHtmlMH('points', 'Mes enfants', 'Implication de chacun et fiches', 'enfants')) +
+      hubItemHtmlMH('agenda', 'Agenda de la famille', MEMBER_MODE ? 'Les rendez-vous de toute la famille' : 'Les rendez-vous de toute la famille, à envoyer dans Google Agenda') +
       hubItemHtmlMH('partage', 'Partage en famille', 'Vos idées, vos activités et votre moment privilégié') +
       (CLIENT_CODE ? '' : hubItemHtmlMH('rappel', 'À ne pas oublier', 'Envoyer un message à ' + organizerLabel())) +
       (MEMBER_MODE ? '' : hubItemHtmlMH('codes', 'Accès : enfants et 2ᵉ adulte', 'Un code par enfant (sa journée + les tâches à prendre) et un code pour le 2ᵉ adulte (mêmes droits que toi)')) +
@@ -10166,7 +10489,14 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     } catch (e) { return 'La fiche du jour de chaque enfant'; }
   }
   function jrSetKid(pid) { JR_PID = pid; JR_SETTINGS = false; FICHE_TAB = pid; FICHE_ASSIGN_SELECTED = {}; FICHE_ASSIGN_SELECTED[pid] = true; renderJourneeView(); }
+  var JR_WEEK_OFF = 0; // 0 = semaine en cours, -1 = la précédente…
   function jrSetDate(d) { JR_DATE = d; renderJourneeView(); }
+  function jrWeekShift(n) {
+    JR_WEEK_OFF = Math.min(0, JR_WEEK_OFF + n);
+    var ws = addDaysISO(weekStartOfDate(weekNowISO()), 7 * JR_WEEK_OFF), t = todayISO(), last = addDaysISO(ws, 6);
+    JR_DATE = (JR_WEEK_OFF === 0) ? null : (last > t ? t : last);
+    renderJourneeView();
+  }
   function jrToggle(pid, date, taskId) {
     var o = jrGet(), rec = jrDayRec(o, pid, date);
     if (rec.validated) return;
@@ -10219,12 +10549,16 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += '<div class="jr-admin" style="text-align:right;margin:-2px 0 8px"><a href="#" onclick="goToPersonFiche(' + jsAttr(pid) + ');return false" style="color:var(--green,#3F5D46);font-weight:700;font-size:13px">🏆 Implication de ' + esc(person.label) + ' (argent de poche, points…)</a></div>';
     if (JR_SETTINGS) { el.innerHTML = out + jrSettingsHtml(o, person); return; }
 
-    // Bandeau des 7 derniers jours
+    // Bandeau de la semaine : elle démarre le jour choisi dans « Ma semaine » (lundi par défaut) ; ‹ › pour les semaines passées
+    var jrWs = addDaysISO(weekStartOfDate(weekNowISO()), 7 * JR_WEEK_OFF), jrWe = addDaysISO(jrWs, 6), jrW1 = jrWs.split('-').map(Number), jrW2 = jrWe.split('-').map(Number);
+    out += '<div style="display:flex;align-items:center;justify-content:space-between;gap:8px;margin:2px 0 6px"><button type="button" class="jr-wk-btn" onclick="jrWeekShift(-1)" style="border:none;background:#E7EEE1;color:#2C4432;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer">‹</button>'
+      + '<div style="font-size:12.5px;font-weight:800;color:#2C4432;text-align:center">' + (JR_WEEK_OFF === 0 ? 'Cette semaine · ' : '') + 'du ' + jrW1[2] + ' ' + JR_MONTHS[jrW1[1] - 1] + ' au ' + jrW2[2] + ' ' + JR_MONTHS[jrW2[1] - 1] + '</div>'
+      + '<button type="button" class="jr-wk-btn" onclick="jrWeekShift(1)" style="border:none;background:#E7EEE1;color:#2C4432;border-radius:50%;width:30px;height:30px;font-size:16px;cursor:pointer;' + (JR_WEEK_OFF >= 0 ? 'opacity:.35;pointer-events:none' : '') + '">›</button></div>';
     out += '<div class="jr-strip">';
-    for (var i = 6; i >= 0; i--) {
-      var ds = jrAddDays(today, -i), st = jrStatus(o, pid, ds), pd = ds.split('-').map(Number), dt = new Date(pd[0], pd[1] - 1, pd[2]);
-      var ic = st === 'valide' ? '✅' : (st === 'absent' ? '🏠' : (st === 'termine' ? '⏳' : (jrDone(o, pid, ds).n ? '🔸' : '◻️')));
-      out += '<button class="jr-day' + (ds === date ? ' sel' : '') + '" onclick="jrSetDate(' + jsAttr(ds) + ')"><div class="d1">' + (i === 0 ? 'auj.' : JR_DAYS[dt.getDay()]) + '</div><div class="d2">' + pd[2] + '</div><div class="d3">' + ic + '</div></button>';
+    for (var i = 0; i < 7; i++) {
+      var ds = jrAddDays(jrWs, i), future = ds > today, st = future ? 'avenir' : jrStatus(o, pid, ds), pd = ds.split('-').map(Number), dt = new Date(pd[0], pd[1] - 1, pd[2]);
+      var ic = future ? '·' : (st === 'valide' ? '✅' : (st === 'absent' ? '🏠' : (st === 'termine' ? '⏳' : (jrDone(o, pid, ds).n ? '🔸' : '◻️'))));
+      out += '<button class="jr-day' + (ds === date ? ' sel' : '') + (ds === today ? ' today' : '') + '"' + (future ? ' disabled style="opacity:.45"' : ' onclick="jrSetDate(' + jsAttr(ds) + ')"') + '><div class="d1">' + (ds === today ? 'auj.' : JR_DAYS[dt.getDay()]) + '</div><div class="d2">' + pd[2] + '</div><div class="d3">' + ic + '</div></button>';
     }
     out += '</div>';
 
@@ -10280,7 +10614,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += '</div>';
     out += '<button class="jr-btn ghost" onclick="jrOpenSettings()">⚙️ Régler la fiche (parents)</button>';
     el.innerHTML = out;
-    var jrStrip = el.querySelector('.jr-strip'); if (jrStrip) jrStrip.scrollLeft = jrStrip.scrollWidth;
+    var jrStrip = el.querySelector('.jr-strip'); if (jrStrip) { var jrTb = jrStrip.querySelector('.jr-day.today'); jrStrip.scrollLeft = jrTb ? Math.max(0, jrTb.offsetLeft - jrStrip.clientWidth / 2 + jrTb.clientWidth / 2) : 0; }
   }
   // ── Réglages (parents) ──
   // La semaine était marquée « absente » (garde alternée) alors que l'enfant est là : on la remet « présente ».
@@ -10394,7 +10728,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     });
   }
   function showView(view, btn) {
-    if (MEMBER_MODE && view !== 'journee' && view !== 'afaire' && view !== 'partage' && view !== 'monargent') { view = 'journee'; btn = null; }
+    if (MEMBER_MODE && view !== 'journee' && view !== 'afaire' && view !== 'partage' && view !== 'monargent' && view !== 'agenda') { view = 'journee'; btn = null; }
     // Le retour en arrière sur un jour passé (voir DAILY_VIEW_DATE) ne concerne QUE la section
     // "Tâches du jour" elle-même — jamais l'onglet "Aujourd'hui" (qui agrège quotidien+hebdo+mensuel
     // et doit toujours refléter le vrai jour présent) ni aucune autre section. On la réinitialise donc
@@ -10407,7 +10741,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     document.querySelectorAll('nav.bottom button').forEach(function(b){ b.classList.remove('active'); });
     var target = document.getElementById('view-' + view);
     if (target) target.classList.add('active');
-    var navKey = NAV_PARENT[view] || view;
+    var navKey = (MEMBER_MODE && view === 'agenda') ? 'agenda' : (NAV_PARENT[view] || view);
     var navBtn = btn || document.querySelector('nav.bottom button[data-view="' + navKey + '"]');
     if (navBtn) navBtn.classList.add('active');
     if (view !== 'home') {
@@ -10428,6 +10762,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     if (view === 'monargent') renderMonArgent();
     if (view === 'codes') renderCodesView();
     if (view === 'partage') renderPartageView();
+    if (view === 'agenda') renderAgendaView();
     if (view === 'tuto') renderTutoViewMH();
     if (view === 'histo') renderHistoView();
     if (view === 'planning') renderPlanningView();
@@ -10468,6 +10803,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       '<div id="homeFamilyStripIn" class="family-strip">' + homeFamilyStripHtml() + '</div>' +
       (kids.length ? '<div class="home-week-toggle"><div class="hw-state">' + (free ? '🌿 Cette semaine : <b>sans</b> les enfants' : '👨‍👧 Cette semaine : <b>avec</b> les enfants') + '</div><button type="button" onclick="homeToggleKids()">' + (free ? 'Les enfants sont là' : 'Les enfants ne sont pas là') + '</button></div>' : '') +
       '</div>';
+    try { out += agHomeCardHtml(); } catch (e) {}
     el.innerHTML = out;
     var nv = document.getElementById('mainBottomNav'); if (nv) nv.style.display = 'flex';
   }
