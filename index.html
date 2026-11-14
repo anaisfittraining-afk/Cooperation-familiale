@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-14-regles-jour-11';
+window.MH_BUILD_VERSION = '2026-11-14-regles-jour-12';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -2607,7 +2607,21 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   // 🌈 Ma journée (fiche du jour des enfants) : données propres, isolées par famille (nsKey) et synchronisées.
   var DAYSHEET_KEY = nsKey('mh_daysheet_v1'); // { config:{monthly:{personId:€},absentAuto}, templates:{_famille:[…],personId:[…]}, days:{personId:{'YYYY-MM-DD':{ticks:{taskId:true},validated,validatedAt}}} }
   SYNC_KEYS.push(DAYSHEET_KEY);
-  // 📅 Journal des dates : une ligne à chaque fois qu'une tâche hebdo/mensuelle/exceptionnelle/"Ça rapporte"
+  // 📅 Agenda de la famille : synchronisé comme le reste (état partagé, mise à jour en direct sur tous les téléphones).
+  // Les événements sont FUSIONNÉS un par un (jamais « le dernier appareil écrase tout ») : voir agMergeJson.
+  var AGENDA_KEY = nsKey('mh_agenda_v1');
+  SYNC_KEYS.push(AGENDA_KEY);
+  function agMergeJson(a, b) {
+    function parse(x) { try { var v = JSON.parse(x || '[]'); return Array.isArray(v) ? v : []; } catch (e) { return []; } }
+    var la = parse(a), lb = parse(b), byId = {}, order = [];
+    la.concat(lb).forEach(function(e) {
+      if (!e || !e.id) return;
+      var cur = byId[e.id];
+      if (!cur) { byId[e.id] = e; order.push(e.id); }
+      else if ((e.ts || 0) > (cur.ts || 0)) byId[e.id] = e;
+    });
+    return JSON.stringify(order.map(function(id) { return byId[id]; }));
+  }  // 📅 Journal des dates : une ligne à chaque fois qu'une tâche hebdo/mensuelle/exceptionnelle/"Ça rapporte"
   // est cochée { p: personne, t: tâche, per: période, k: clé de période, d: date du jour }. Nouvelle clé,
   // isolée par famille : elle n'écrase aucune donnée existante. Les tâches quotidiennes n'en ont pas besoin
   // (leurs cases sont déjà rangées par date).
@@ -2771,16 +2785,22 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     SYNC_KEYS.forEach(function(k) { state[k] = localStorage.getItem(k); });
     return state;
   }
+  var AGENDA_NEEDS_PUBLISH = false;
   function applySyncState(state) {
     SYNC_KEYS.forEach(function(k) {
       if (state && Object.prototype.hasOwnProperty.call(state, k) && state[k] != null) {
         // Chaque clé dans son propre try/catch : avant, une seule erreur ici (typiquement le stockage
         // local plein) interrompait la boucle entière — toutes les clés restantes, même sans rapport
         // avec celle qui avait échoué, restaient alors sur une ancienne valeur sans aucun avertissement.
-        try { localStorage.setItem(k, state[k]); } catch (e) { keysyncShowIncompleteWarning(); }
+        try {
+          var v = state[k];
+          if (k === AGENDA_KEY) { var m = agMergeJson(localStorage.getItem(k), v); if (m !== v) AGENDA_NEEDS_PUBLISH = true; v = m; }
+          localStorage.setItem(k, v);
+        } catch (e) { keysyncShowIncompleteWarning(); }
       }
     });
     if (state && state._at) syncMarkSeen(state._at, null);
+    if (AGENDA_NEEDS_PUBLISH) { AGENDA_NEEDS_PUBLISH = false; try { scheduleSyncPublish(); } catch (e) {} }
   }
   function scheduleSyncPublish() {
     try { localStorage.setItem(SYNC_PENDING_KEY, '1'); } catch (e) {}
@@ -2836,6 +2856,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       SYNC_KEYS.forEach(function(k) {
         var l = local[k], r = (remote[k] === undefined ? null : remote[k]);
         var lh = hashStr(l), rh = hashStr(r), bh = base[k];
+        if (k === AGENDA_KEY && l != null && r != null) { merged[k] = agMergeJson(l, r); return; } // agenda : union des événements
         if (lh === rh) { merged[k] = l; return; }
         if ((r === null || r === undefined || r === '') && l != null && l !== '') { merged[k] = l; return; } // absent du cloud mais présent ici : on le garde et on le renvoie (une donnée n'est jamais perdue parce qu'un autre appareil ne l'avait pas)
         var localChanged = (bh !== undefined) && lh !== bh;     // modifiée ICI depuis la dernière synchro
@@ -2867,6 +2888,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     maybeShowFamilySetup();
     try { var jv = document.getElementById('view-journee'); if (jv && jv.classList.contains('active') && !JR_EDIT_FOCUS()) renderJourneeView(); } catch (e) {}
     try { var pv = document.getElementById('view-partage'); if (pv && pv.classList.contains('active')) renderPartageView(); } catch (e) {}
+    try { var av = document.getElementById('view-agenda'); if (av && av.classList.contains('active') && !AG_EDIT) renderAgendaView(); renderAgendaToday(); } catch (e) {}
   }
   function initSync() {
     if (typeof firebase === 'undefined') {
@@ -9975,9 +9997,15 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   // famille voient le même agenda. Les parents (y compris le 2ᵉ adulte) ajoutent / modifient / suppriment et peuvent envoyer les
   // événements dans Google Agenda ; les enfants (avec leur code) consultent seulement.
   function agKey() { return nsKey('mh_agenda_v1'); }
-  function agAll() { try { var a = JSON.parse(localStorage.getItem(agKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  // Les événements supprimés restent dans la donnée partagée sous forme de « pierre tombale » {id, del:true, ts} : sans cela, un
+  // téléphone pas encore à jour ferait réapparaître un événement supprimé. agAll() ne renvoie que les événements visibles.
+  function agRaw() { try { var a = JSON.parse(localStorage.getItem(agKey()) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
+  function agAll() { return agRaw().filter(function(e) { return e && !e.del; }); }
   function agSave(a) {
-    try { localStorage.setItem(agKey(), JSON.stringify(a)); } catch (e) { return false; }
+    var ids = {}; a.forEach(function(e) { ids[e.id] = true; });
+    var now = Date.now(), tomb = [];
+    agRaw().forEach(function(e) { if (e && e.id && !ids[e.id]) tomb.push(e.del ? e : { id: e.id, del: true, ts: now }); });
+    try { localStorage.setItem(agKey(), JSON.stringify(a.concat(tomb))); } catch (e) { return false; }
     try { scheduleSyncPublish(); } catch (e) {}
     return true;
   }
@@ -10284,7 +10312,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     out += gblk('📱 La barre du bas', 'Elle reste visible partout : <b>Accueil</b>, <b>Ma semaine</b>, <b>Aujourd\'hui</b>, <b>Tâches</b>, <b>Ça rapporte</b>, <b>Famille</b>, <b>Historique</b> et <b>Courses</b>. En haut à droite : ⚙️ les <b>Paramètres</b> et 📖 ce guide. L\'implication et l\'argent de poche des enfants sont dans <b>Famille</b>.');
     out += gblk('🌈 Ma journée, points et argent de poche', 'Chaque enfant a sa journée : il coche ses tâches, un parent la valide, et les loisirs se débloquent. Tu demandes un nombre de <b>points par jour et par semaine</b> à chaque enfant (différent pour chacun). Une journée non validée retire un montant du pot (1 € par défaut). Si les points du jour ne sont pas atteints, chaque point manquant retire aussi de l\'argent ; les points <b>en plus</b> vont dans le pot « salaire ». Tout est écrit jour par jour dans l\'historique.');
     out += gblk('⚙️ Tout se règle dans Paramètres', 'Bouton ⚙️ en haut à droite, onglet <b>🌈 Journée &amp; argent</b> : les points demandés, le montant retiré, le tarif des points manquants et des points en plus, et un interrupteur pour chaque règle. Chaque changement est enregistré tout de suite. Le même onglet permet d\'autoriser (ou non) le code perso, Courses et l\'agenda pour les enfants.');
-    out += gblk('🧒 Ce que voient les enfants', 'Chaque enfant ouvre l\'appli avec son code (<b>Famille › Accès</b>) et peut ensuite se créer son <b>code perso</b>. Il a : <b>Ma journée</b>, <b>À faire</b> (comme ton Aujourd\'hui : impératifs du jour et de la semaine, quotidien, prévu aujourd\'hui, « Ça rapporte »), <b>Mon argent</b>, <b>Agenda</b> (il peut ajouter ses événements et ne modifie que les siens) et <b>Courses</b>.');
+    out += gblk('🧒 Ce que voient les enfants', 'Chaque enfant ouvre l\'appli avec son code (<b>Famille › Accès</b>) et peut ensuite se créer son <b>code perso</b>. Il a : <b>Ma journée</b>, <b>À faire</b> (comme ton Aujourd\'hui : impératifs du jour et de la semaine, quotidien, prévu aujourd\'hui, « Ça rapporte »), <b>Mon argent</b>, <b>Agenda</b> (il peut ajouter ses événements et ne modifie que les siens ; ils apparaissent aussitôt sur tous les téléphones de la famille) et <b>Courses</b>.');
 
     out += '<div class="cat-block"><div class="cat-title">☀️ Aujourd\'hui</div><div class="task-card" style="cursor:default;"><div class="task-row-top"><div class="task-text">La page d\'accueil : d\'abord « 🎯 Vos impératifs de la journée » (les tâches perso de chaque enfant qui comptent aujourd\'hui), puis les tâches quotidiennes, plus celles de la semaine/du mois qui tombent aujourd\'hui (ou qu\'on a épinglées 📌), toutes réunies au même endroit.</div></div></div></div>';
 
