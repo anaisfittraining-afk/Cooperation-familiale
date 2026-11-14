@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-13-agenda-famille';
+window.MH_BUILD_VERSION = '2026-11-14-anti-ecrasement-3';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -2924,8 +2924,8 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       if (!SYNC_READY) { migrateArgentMonthSeed(); ensurePocketOneTimeAdjustments(); renderPoints(); SYNC_READY = true; maybeShowFamilySetup(); }
     });
     keysyncBootstrapAll();
-    fbDB.ref(fbKeysPath()).on('child_added', keysyncApplyChild);
-    fbDB.ref(fbKeysPath()).on('child_changed', keysyncApplyChild);
+    fbDB.ref(fbKeysPath()).on('child_added', function(sn) { keysyncApplyChild(sn, false); });
+    fbDB.ref(fbKeysPath()).on('child_changed', function(sn) { keysyncApplyChild(sn, true); });
     fbDB.ref(fbKeysPath()).on('child_removed', keysyncApplyRemoved);
   }
 
@@ -3020,11 +3020,18 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       })(k);
     }
   }
-  function keysyncApplyChild(snap) {
+  // 🛑 CORRECTIF « tout a disparu quand un nouvel appareil se connecte » : les copies « clé par clé » du cloud ne sont plus
+  // mises à jour à chaque modification (elles restent figées à une date ancienne). Avant, un appareil qui s'ouvrait les
+  // réappliquait PAR-DESSUS l'état partagé à jour, puis republiait ce vieil état → cases cochées, argent, historiques perdus.
+  // Désormais : (1) les données de l'état partagé (SYNC_KEYS) ne sont JAMAIS remplacées par cette copie ; (2) une donnée déjà
+  // présente sur l'appareil n'est jamais remplacée à l'ouverture (seulement si elle manque, ou si une vraie mise à jour
+  // en direct, plus récente, arrive).
+  function keysyncApplyChild(snap, live) {
     var rawKey = snap.key;
     var v = snap.val();
     if (!v || typeof v.t !== 'number') return;
     if (KEYSYNC_EXCLUDE[rawKey]) return;
+    if (SYNC_KEYS.indexOf(rawKey) >= 0) return;
     if (!keysyncOwn(rawKey)) { FOREIGN_CLOUD_HASH[rawKey] = hashStr(v.v); return; } // donnée d'une autre appli : on ne la copie plus ici
     var meta = keysyncGetMeta();
     var lastApplied = meta[rawKey] || 0;
@@ -3033,6 +3040,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     // correspond déjà à "la dernière version qu'on a appliquée".
     var stillPresent = localStorage.getItem(rawKey) !== null;
     if (v.t <= lastApplied && stillPresent) return;
+    if (stillPresent && live !== true) return; // jamais d'écrasement d'une donnée présente à l'ouverture
     try {
       keysyncOriginalSetItem(rawKey, v.v);
       keysyncSetMetaTs(rawKey, v.t);
@@ -4291,6 +4299,11 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   // ══════════════════════════════════════════════════════════════════════════════════════════════
   var PLAN_DAYS = ['', 'Lundi', 'Mardi', 'Mercredi', 'Jeudi', 'Vendredi', 'Samedi', 'Dimanche', 'Tous les jours']; // 8 = tous les jours
   var PLAN_VIEW_MODE = null; // 'a' (avec enfants) ou 's' (sans enfants) — onglet affiché
+  // Réaffiche l'éditeur là où il est ouvert : « Ma semaine » (si c'est l'écran actif) ou « Programme de la semaine »
+  function planRerender() {
+    var v = document.getElementById('view-semaine');
+    if (v && v.classList.contains('active')) renderMaSemaine(); else renderPlanningView();
+  }
   function planGet() {
     try { var p = JSON.parse(localStorage.getItem(PLAN_KEY) || 'null'); if (p && typeof p === 'object') { p.weekly = p.weekly || {}; p.monthly = p.monthly || {}; return p; } } catch (e) {}
     return { on: false, weekly: {}, monthly: {} };
@@ -4425,28 +4438,28 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var had = planGet().on;
     if (had && !window.confirm('Recréer tout le programme à partir de tes tâches actuelles ? Les jours que tu as choisis à la main seront remplacés. Tes tâches, tes points et tes cases cochées ne changent pas.')) return;
     planSave(planGenerate());
-    renderPlanningView();
+    planRerender();
     try { renderToday(); } catch (e) {}
   }
   function planOff() {
     if (!window.confirm('Désactiver le programme ? Les tâches hebdo et mensuelles reviennent au fonctionnement d\'avant (prochaine échéance = dernière fois + 7 jours / 1 mois). Le programme est gardé si tu veux le réactiver.')) return;
-    var p = planGet(); p.on = false; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {}
+    var p = planGet(); p.on = false; planSave(p); planRerender(); try { renderToday(); } catch (e) {}
   }
-  function planOn() { var p = planGet(); p.on = true; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {} }
+  function planOn() { var p = planGet(); p.on = true; planSave(p); planRerender(); try { renderToday(); } catch (e) {} }
   function planSetWeekly(taskId, mode, val) {
     var p = planGet(); if (!p.weekly[taskId]) p.weekly[taskId] = {};
-    p.weekly[taskId][mode] = parseInt(val, 10) || 0; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {}
+    p.weekly[taskId][mode] = parseInt(val, 10) || 0; planSave(p); planRerender(); try { renderToday(); } catch (e) {}
   }
   function planSetMonthly(taskId, field, val) {
     var p = planGet(); if (!p.monthly[taskId]) p.monthly[taskId] = { w: 1, d: 2 };
-    p.monthly[taskId][field] = parseInt(val, 10) || 0; planSave(p); renderPlanningView(); try { renderToday(); } catch (e) {}
+    p.monthly[taskId][field] = parseInt(val, 10) || 0; planSave(p); planRerender(); try { renderToday(); } catch (e) {}
   }
-  function planSetViewMode(m) { PLAN_VIEW_MODE = m; renderPlanningView(); }
+  function planSetViewMode(m) { PLAN_VIEW_MODE = m; planRerender(); }
   function planToggleThisWeek() {
     var wk = isoWeekKeyForDate(weekNowISO()), kids = ficheChildren(); if (!kids.length) return;
     var free = planKidFree(wk);
     kids.forEach(function(k) { if (isChildAbsentWeek(k.id, wk) === free) toggleChildAbsence(k.id, wk); });
-    renderPlanningView(); try { renderToday(); } catch (e) {}
+    planRerender(); try { renderToday(); } catch (e) {}
   }
   function planSelectHtml(opts, cur, onchange) {
     return '<select onchange="' + onchange + '" style="padding:5px 6px;border:1.5px solid var(--border,#E2DCC8);border-radius:8px;font-size:12.5px;background:#fff;max-width:128px">' +
@@ -4481,7 +4494,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       return e;
     };
   })();
-  var TR_PANEL = null, TR_SEL = {}, TR_DATE = '', SEM_OFFSET = 0, SEM_ADD = null;
+  var TR_PANEL = null, TR_SEL = {}, TR_DATE = '', SEM_OFFSET = 0, SEM_ADD = null, SEM_EDIT = false;
   function trGet() { try { var a = JSON.parse(localStorage.getItem(TRANSFER_KEY) || '[]'); return Array.isArray(a) ? a : []; } catch (e) { return []; } }
   function trSave(a) { localStorage.setItem(TRANSFER_KEY, JSON.stringify(a)); scheduleSyncPublish(); }
   function trDateLabel(ds) {
@@ -4654,6 +4667,16 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     kids.forEach(function(k) { if (isChildAbsentWeek(k.id, wk) === free) toggleChildAbsence(k.id, wk); });
     renderMaSemaine(); try { renderToday(); } catch (e) {} try { renderHomeTiles(); } catch (e) {}
   }
+  // ✏️ Régler « Ma semaine » soi-même (cliente comme Anaïs) : le jour de chaque tâche hebdo, la semaine + le jour de chaque tâche mensuelle
+  function semEdit(on) { SEM_EDIT = !!on; SEM_ADD = null; renderMaSemaine(); try { renderToday(); } catch (e) {} }
+  function semStartAuto() { planSave(planGenerate()); SEM_EDIT = false; renderMaSemaine(); try { renderToday(); } catch (e) {} try { renderHomeTiles(); } catch (e) {} }
+  function semStartManual() { var p = planGet(); p.on = true; planSave(p); SEM_EDIT = true; renderMaSemaine(); try { renderToday(); } catch (e) {} }
+  function semUnplanned(plan, all) {
+    var n = 0;
+    (all.weekly || []).forEach(function(t) { var pl = plan.weekly[t.id]; if (!pl || (!pl.a && !pl.s)) n++; });
+    (all.monthly || []).forEach(function(t) { var pl = plan.monthly[t.id]; if (!pl || !pl.w || !pl.d) n++; });
+    return n;
+  }
   function semOpenAdd(date) { SEM_ADD = (SEM_ADD === date) ? null : date; TR_SEL = {}; renderMaSemaine(); }
   function semConfirmAdd(date) {
     var sel = document.getElementById('sem-add-task'); if (!sel || !sel.value) return;
@@ -4692,15 +4715,35 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var tr = trGet();
     var out = '<div class="back-link" onclick="showView(\'taches\', null)">‹ Tâches ménagères</div>';
     out += '<div class="section-head" style="align-items:center;justify-content:flex-start"><span style="width:56px;height:56px;flex:none;margin-right:10px;display:inline-block">' + MH_ICO_SEMAINE + '</span><h2>Ma semaine</h2></div>';
-    out += '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;flex-wrap:wrap;margin-bottom:8px">' +
-      '<button class="backup-btn-copy" onclick="semSetOffset(' + (SEM_OFFSET - 1) + ')">‹</button>' +
-      '<div style="text-align:center;font-weight:800">Du ' + esc(trDateLabel(mon)) + '<br>au ' + esc(trDateLabel(sun)) + (SEM_OFFSET === 0 ? ' <span class="repeat-badge">cette semaine</span>' : '') + '</div>' +
-      '<button class="backup-btn-copy" onclick="semSetOffset(' + (SEM_OFFSET + 1) + ')">›</button></div>';
-    out += '<div style="text-align:right;margin:-2px 0 8px"><a href="#" onclick="showView(\'planning\',null);return false" style="color:var(--green,#3F5D46);font-weight:700;font-size:13px">⚙️ Régler le programme de la semaine</a></div>';
-    out += '<div class="cat-block"><div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + (free ? '🌿 Semaine <b>sans</b> les enfants' : '👨‍👧 Semaine <b>avec</b> les enfants') + '</div></div>' +
+    out += '<div style="display:flex;gap:8px;align-items:center;justify-content:space-between;margin-bottom:8px">' +
+      '<button class="backup-btn-copy" style="flex:none" onclick="semSetOffset(' + (SEM_OFFSET - 1) + ')">‹</button>' +
+      '<div style="text-align:center;font-weight:800;flex:1;min-width:0">Du ' + esc(trDateLabel(mon)) + '<br>au ' + esc(trDateLabel(sun)) + (SEM_OFFSET === 0 ? ' <span class="repeat-badge">cette semaine</span>' : '') + '</div>' +
+      '<button class="backup-btn-copy" style="flex:none" onclick="semSetOffset(' + (SEM_OFFSET + 1) + ')">›</button></div>';
+    var hasRecurring = (all.weekly || []).length + (all.monthly || []).length > 0;
+    if (plan.on && hasRecurring) out += '<div style="margin:-2px 0 8px"><button class="backup-btn-copy" onclick="semEdit(' + (SEM_EDIT ? 'false' : 'true') + ')" style="font-weight:800">' + (SEM_EDIT ? '✅ Terminé — revoir ma semaine' : '✏️ Régler ma semaine (choisir le jour de mes tâches)') + '</button></div>';
+    var topCards = '<div class="cat-block"><div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">' + (free ? '🌿 Semaine <b>sans</b> les enfants' : '👨‍👧 Semaine <b>avec</b> les enfants') + '</div></div>' +
       (kids.length ? '<div style="margin-top:8px"><button class="backup-btn-copy" onclick="semToggleKids(' + jsAttr(wk) + ')">' + (free ? '👨‍👧 Les enfants sont là cette semaine-là' : '🌿 Les enfants ne sont pas là cette semaine-là') + '</button></div>' : '') + '</div></div>';
-    out += presenceGridHtml(mon) + weekStartCardHtml();
-    if (!plan.on) out += '<p class="points-note">Le programme n\'est pas actif : seules les tâches que tu confies à la main apparaissent ici. Tu peux le créer dans <a href="#" onclick="showView(\'planning\',null);return false" style="color:var(--green,#3F5D46);font-weight:700">Programme de la semaine</a>.</p>';
+    topCards += presenceGridHtml(mon);
+    if (SEM_EDIT && plan.on) {
+      out += '<div class="cat-block"><div class="task-card" style="cursor:default;background:#F3F6EC"><div class="task-text" style="font-weight:800">✏️ Je règle ma semaine</div>' +
+        '<p class="points-note" style="margin:6px 0 0">Pour chaque tâche, choisis le jour avec la liste déroulante : c\'est enregistré tout de suite. Les tâches apparaissent ensuite chaque semaine (ou chaque mois) au bon jour dans « Ma semaine » et dans « Aujourd\'hui ». Tes tâches, tes points et tes cases cochées ne changent pas.</p></div></div>';
+      out += weekStartCardHtml() + planBuild(true);
+      out += '<div style="margin:12px 0"><button class="edit-save" onclick="semEdit(false)">✅ Terminé — voir ma semaine</button></div>';
+      el.innerHTML = out; return;
+    }
+    if (!plan.on) {
+      if (!hasRecurring) {
+        out += '<div class="cat-block"><div class="task-card" style="cursor:default"><div class="task-text">Pour préparer ta semaine, ajoute d\'abord tes tâches <b>hebdomadaires</b> et <b>mensuelles</b> dans « Tâches ménagères ». Reviens ensuite ici : tu pourras choisir le jour de chacune.</div><div style="margin-top:8px"><button class="backup-btn-copy" onclick="showView(\'taches\', null)">‹ Aller aux tâches ménagères</button></div></div></div>';
+      } else {
+        out += '<div class="cat-block"><div class="task-card" style="cursor:default;background:#F3F6EC"><div class="task-text" style="font-weight:800">🗓️ Prépare ta semaine</div>' +
+          '<p class="points-note" style="margin:6px 0 8px">Tu as ' + (all.weekly || []).length + ' tâche' + ((all.weekly || []).length > 1 ? 's' : '') + ' hebdo et ' + (all.monthly || []).length + ' tâche' + ((all.monthly || []).length > 1 ? 's' : '') + ' mensuelle' + ((all.monthly || []).length > 1 ? 's' : '') + '. Choisis le jour de chacune, ou laisse l\'appli te proposer une semaine équilibrée (tu pourras tout changer ensuite).</p>' +
+          '<div style="display:flex;gap:8px;flex-wrap:wrap"><button class="edit-save" onclick="semStartAuto()">✨ Me proposer une semaine</button><button class="backup-btn-copy" onclick="semStartManual()">✏️ Je choisis moi-même les jours</button></div></div></div>';
+      }
+    } else if (hasRecurring) {
+      var nun = semUnplanned(plan, all);
+      if (nun) out += '<p class="points-note" style="margin:6px 0"><b>' + nun + '</b> tâche' + (nun > 1 ? 's n\'ont' : ' n\'a') + ' pas encore de jour. <a href="#" onclick="semEdit(true);return false" style="color:var(--green,#3F5D46);font-weight:700">Choisir leur jour</a></p>';
+    }
+    out += topCards + weekStartCardHtml();
     if (plan.on && SEM_OFFSET === 0) {
       var carried = [];
       ['weekly', 'monthly'].forEach(function(pp) { (all[pp] || []).forEach(function(t) { if (planCarried(pp, t.id)) carried.push({ p: pp, t: t }); }); });
@@ -4757,21 +4800,22 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     }
     el.innerHTML = out;
   }
-  function renderPlanningView() {
-    var el = document.getElementById('view-planning'); if (!el) return;
+  function renderPlanningView() { var el = document.getElementById('view-planning'); if (!el) return; el.innerHTML = planBuild(false); }
+  // Éditeur du programme : utilisé dans « Programme de la semaine » (inline=false) ET directement dans « Ma semaine » (inline=true)
+  function planBuild(inline) {
     var plan = planGet(), all = getTasksAll(), wk = isoWeekKeyForDate(weekNowISO()), free = planKidFree(wk), kids = ficheChildren();
     if (!PLAN_VIEW_MODE) PLAN_VIEW_MODE = free ? 's' : 'a';
-    var out = '<div class="back-link" onclick="showView(\'taches\', null)">‹ Tâches ménagères</div>';
-    out += '<div class="section-head"><h2>🗓️ Programme de la semaine</h2></div>';
+    var out = inline ? '' : '<div class="back-link" onclick="showView(\'taches\', null)">‹ Tâches ménagères</div>';
+    if (!inline) out += '<div class="section-head"><h2>🗓️ Programme de la semaine</h2></div>';
     out += '<p class="points-note" style="margin-top:0">Chaque tâche hebdo a son jour (un jour quand les enfants sont là, un autre quand ils sont partis), chaque tâche mensuelle a sa semaine du mois et son jour. Les tâches prévues le jour même apparaissent dans <b>Aujourd\'hui</b>, et restent à faire les jours suivants tant qu\'elles ne sont pas cochées.</p>';
-    out += weekStartCardHtml();
-    if (!(all.weekly || []).length && !(all.monthly || []).length) { el.innerHTML = out + '<div class="today-empty">Ajoute d\'abord des tâches hebdo ou mensuelles.</div>'; return; }
+    if (!inline) out += weekStartCardHtml();
+    if (!(all.weekly || []).length && !(all.monthly || []).length) { return out + '<div class="today-empty">Ajoute d\'abord des tâches hebdo ou mensuelles (dans « Tâches ménagères »).</div>'; }
     out += '<div class="cat-block"><div class="task-card" style="cursor:default"><div class="task-row-top"><div class="task-text">';
     if (!plan.on) {
       out += (Object.keys(plan.weekly).length ? 'Le programme est <b>désactivé</b>.' : 'Pas encore de programme.') + '</div></div><div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
         + '<button class="backup-btn-copy" onclick="planGenerateAsk()">✨ Créer le programme à partir de mes tâches</button>'
         + (Object.keys(plan.weekly).length ? '<button class="backup-btn-copy" onclick="planOn()">▶️ Réactiver</button>' : '') + '</div></div></div>';
-      el.innerHTML = out; return;
+      return out;
     }
     out += '✅ Programme actif · cette semaine : <b>' + (free ? '🌿 sans les enfants' : '👨‍👧 avec les enfants') + '</b></div></div>';
     out += '<div style="display:flex;gap:8px;flex-wrap:wrap;margin-top:8px">'
@@ -4838,7 +4882,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       out += '</div>';
     }
     out += '<p class="points-note">Une tâche ajoutée plus tard n\'a pas de jour fixe tant que tu ne lui en donnes pas un ici (ou que tu recrées le programme).</p>';
-    el.innerHTML = out;
+    return out;
   }
 
   // Prochaine échéance pour UNE personne, calculée à partir de la dernière fois où ELLE a fait la tâche
