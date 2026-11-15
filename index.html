@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-15-sans-bonus-fiabilite-16';
+window.MH_BUILD_VERSION = '2026-11-15-partage-taches-17';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -5275,7 +5275,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       SHARE_MODE[k] = true;
       SHARE_SELECTED[k] = [];
     }
-    renderSection(period);
+    refreshAffected(period); // tous les écrans où la carte est affichée (Aujourd'hui, listes, fiches…), pas seulement la liste
   }
   function toggleShareSelect(period, taskId, personId) {
     var k = shareKey(period, taskId);
@@ -5283,13 +5283,13 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var idx = sel.indexOf(personId);
     if (idx === -1) sel.push(personId); else sel.splice(idx, 1);
     SHARE_SELECTED[k] = sel;
-    renderSection(period);
+    refreshAffected(period);
   }
   function cancelShareMode(period, taskId) {
     var k = shareKey(period, taskId);
     delete SHARE_MODE[k];
     delete SHARE_SELECTED[k];
-    renderSection(period);
+    refreshAffected(period);
   }
   // Valide le partage : chaque personne sélectionnée est cochée pour la tâche (comme une coche
   // normale, ✓ visible, date "dernière fois faite" mise à jour) mais créditée d'une part égale des
@@ -5301,11 +5301,12 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     var task = (getTasksAll()[period] || []).find(function(x){ return x.id === taskId; });
     var pts = (task && task.pts != null) ? task.pts : 1;
     var share = Math.max(1, Math.round(pts / selected.length));
+    var rpt = (task && period !== 'argent' && task.repeat > 1) ? task.repeat : 1; // tâche qui se répète : une fois de plus pour chacun
     var checks = getChecksFor(period);
     var arr = checks[taskId] || [];
     var lastDoneAll = getLastDoneAll();
     selected.forEach(function(personId) {
-      if (arr.indexOf(personId) === -1) { arr.push(personId); logDone(period, taskId, personId); }
+      if (countInArray(arr, personId) < rpt) { arr.push(personId); logDone(period, taskId, personId); }
       setSharedCredit(period, taskId, personId, share);
       if (period === 'weekly' || period === 'monthly') {
         if (!lastDoneAll[taskId]) lastDoneAll[taskId] = {};
@@ -6342,11 +6343,11 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     // le dégradé une fois la tâche terminée).
     var keepGradientWhenDone = period === 'argent';
     var cardStyle = ((!allDone || keepGradientWhenDone) && t.pts != null) ? ' style="' + ptsGradientStyle(t.pts) + '"' : '';
-    var out = '<div class="task-card' + (allDone ? ' alldone' : '') + (isEditing || isMalus || isDeletePending || (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === t.id) ? ' menu-open' : '') + '" data-task-id="' + esc(t.id) + '" data-period="' + esc(period) + '"' + cardStyle + '>';
+    var out = '<div class="task-card' + (allDone ? ' alldone' : '') + (isEditing || isMalus || isDeletePending || SHARE_MODE[shareKey(period, t.id)] || (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === t.id) ? ' menu-open' : '') + '" data-task-id="' + esc(t.id) + '" data-period="' + esc(period) + '"' + cardStyle + '>';
     var autoIconKey = taskAutoIcon(t.text);
     var autoIconHtml = t.img ? customTaskImageHtml(t.img) : (autoIconKey ? taskPictogramHtml(autoIconKey) : '');
     out += '<div class="task-row-top"><span class="drag-handle" title="Glisser pour réordonner">☰</span><div class="task-text">' + autoIconHtml + esc(t.text) + badge + repeatBadge + '</div>';
-    var menuOpen = isEditing || isMalus || isDeletePending || (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === t.id);
+    var menuOpen = isEditing || isMalus || isDeletePending || SHARE_MODE[shareKey(period, t.id)] || (TR_PANEL && TR_PANEL.period === period && TR_PANEL.id === t.id);
     out += '<button type="button" class="task-more" onclick="toggleTaskMenu(this)" title="Actions sur cette tâche" aria-label="Actions">⋯</button></div>';
     out += '<div class="task-actions">';
     if (period === 'weekly' || period === 'monthly') {
@@ -6361,7 +6362,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       out += '<button class="task-malus' + (isMalus ? ' active' : '') + '" onclick="toggleMalusPanel(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="Mettre un malus (tâche non faite)">⚠️</button>';
     }
     var isSharing = !!SHARE_MODE[shareKey(period, t.id)];
-    if (period !== 'argent' && taskRepeat === 1 && taskAssignees(t).length > 1) {
+    if (period !== 'argent' && taskAssignees(t).length > 1) {
       out += '<button class="task-share' + (isSharing ? ' active' : '') + '" onclick="toggleShareMode(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="' + (isSharing ? 'Annuler le partage' : 'Fait à plusieurs — partager les points') + '">👥</button>';
     }
     out += '<button class="task-edit' + (isEditing ? ' active' : '') + '" onclick="toggleEditTask(' + jsAttr(period) + ',' + jsAttr(t.id) + ')" title="Modifier la pièce / les points">✏️</button>';
@@ -6464,7 +6465,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       var pts = (t.pts != null) ? t.pts : 1;
       var shareEach = sel.length >= 2 ? Math.max(1, Math.round(pts / sel.length)) : null;
       out += '<div class="share-panel">';
-      out += '<div class="share-hint">👥 Choisis qui a fait cette tâche ensemble' + (shareEach != null ? ' — ' + shareEach + ' pt' + (shareEach > 1 ? 's' : '') + ' chacun' : ' (2 minimum)') + '.</div>';
+      out += '<div class="share-hint">👥 Choisis qui a fait cette tâche ensemble' + (shareEach != null ? ' — ' + shareEach + ' pt' + (shareEach > 1 ? 's' : '') + ' chacun' : ' (2 minimum)') + (taskRepeat > 1 ? ' · pour les tâches qui se répètent, la part vaut pour toutes les fois de cette personne' : '') + '.</div>';
       out += '<button class="share-confirm" onclick="confirmShareCompletion(' + jsAttr(period) + ',' + jsAttr(t.id) + ')"' + (sel.length < 2 ? ' disabled' : '') + '>✅ Valider' + (sel.length >= 2 ? ' à ' + sel.length : '') + '</button>';
       out += '<button class="share-cancel" onclick="cancelShareMode(' + jsAttr(period) + ',' + jsAttr(t.id) + ')">Annuler</button>';
       out += '</div>';
