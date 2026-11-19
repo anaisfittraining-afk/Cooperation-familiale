@@ -8192,6 +8192,98 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     renderPoints();
   }
 
+
+  // ── 📜 Historique complet des pots d'un enfant (ajouté le 19/11/2026) ──
+  // Lecture seule : rassemble, semaine par semaine depuis le début, tout ce qui est entré dans / sorti des
+  // cagnottes Épargne et Loisirs (répartitions d'argent de poche et de salaire, bonus fiabilité, argent remis en
+  // main propre) et compare le total recalculé au montant affiché, pour repérer tout écart inexpliqué.
+  function potsHistWeekLabel(wk) {
+    try {
+      var thu = isoWeekThursday(wk), mon = new Date(thu.getTime() - 3 * 86400000), sun = new Date(thu.getTime() + 3 * 86400000);
+      var mn = ['janv.','févr.','mars','avr.','mai','juin','juil.','août','sept.','oct.','nov.','déc.'];
+      return 'Semaine du ' + mon.getUTCDate() + ' ' + mn[mon.getUTCMonth()] + ' au ' + sun.getUTCDate() + ' ' + mn[sun.getUTCMonth()] + ' ' + sun.getUTCFullYear();
+    } catch (e) { return wk; }
+  }
+  function potsHistBuild(pid) {
+    var E = [];
+    getDistribHistoryAll().filter(function(d) { return d.personId === pid; }).forEach(function(d) {
+      E.push({ date: d.date || '', kind: 'dist', epargne: d.epargneAmt || 0, loisirs: d.loisirsAmt || 0, dette: d.detteAmt || 0,
+        txt: (d.pot === 'salaire' ? '💼 Salaire réparti' : '💶 Argent de poche réparti') + ' : ' + fmtEuros(round2((d.epargneAmt || 0) + (d.detteAmt || 0) + (d.loisirsAmt || 0))) + ' €' });
+    });
+    getWeeklyBonusHistory().filter(function(b) { return b.personId === pid; }).forEach(function(b) {
+      E.push({ date: b.date || '', kind: 'bonus', epargne: 0, loisirs: b.amount || 0, dette: 0, id: b.id,
+        txt: '🎉 Bonus fiabilité (' + esc(potsHistWeekLabel(b.weekKey).replace('Semaine du ','semaine du ')) + ') : +' + fmtEuros(b.amount || 0) + ' € en loisirs' });
+    });
+    getReceivedHistoryAll().filter(function(r) { return r.personId === pid; }).forEach(function(r) {
+      var sign = { epargne: [-1, 0], loisirs: [0, -1] }[r.cagnotte] || [0, 0];
+      E.push({ date: r.date || '', kind: 'recu', epargne: sign[0] * (r.amount || 0), loisirs: sign[1] * (r.amount || 0), dette: 0,
+        txt: '💶 Remis en main propre (' + ({ epargne: '🏦 épargne', loisirs: '🎈 loisirs', dette: '💳 dette' }[r.cagnotte] || esc(r.cagnotte)) + ') : ' + fmtEuros(r.amount || 0) + ' €' });
+    });
+    getPocketMonthHistoryAll().filter(function(m) { return m.personId === pid; }).forEach(function(m) {
+      E.push({ date: m.closedDate || '', kind: 'mois', epargne: 0, loisirs: 0, dette: 0,
+        txt: '📅 Mois ' + esc(m.ym) + ' clôturé : ' + ({ won: 'objectif atteint', lost: 'objectif manqué', neutral: 'neutre' }[m.result] || esc(m.result)) + ' — ' + fmtEuros(m.euros || 0) + ' € (' + (m.pts || 0) + ' pts / objectif ' + (m.target || 0) + ')' });
+    });
+    E.sort(function(a, b) { return a.date < b.date ? -1 : (a.date > b.date ? 1 : 0); });
+    return E;
+  }
+  function openPotsHistory(pid) {
+    var p = PERSONS.filter(function(x) { return x.id === pid; })[0]; if (!p) return;
+    var E = potsHistBuild(pid), w = getWalletFor(pid);
+    var cumE = 0, cumL = 0, totBonus = 0, totDistL = 0, totRecL = 0, nBonus = 0, groups = [], cur = null;
+    E.forEach(function(e) {
+      cumE = round2(cumE + e.epargne); cumL = round2(cumL + e.loisirs);
+      if (e.kind === 'bonus') { totBonus = round2(totBonus + e.loisirs); nBonus++; }
+      if (e.kind === 'dist') totDistL = round2(totDistL + e.loisirs);
+      if (e.kind === 'recu' && e.loisirs < 0) totRecL = round2(totRecL - e.loisirs);
+      var wk = e.date ? isoWeekKeyForDate(e.date) : 'sans-date';
+      if (!cur || cur.wk !== wk) { cur = { wk: wk, rows: [] }; groups.push(cur); }
+      cur.rows.push(e); cur.cumE = cumE; cur.cumL = cumL;
+    });
+    var ecartL = round2((w.loisirs || 0) - cumL), ecartE = round2((w.epargne || 0) - cumE);
+    var h = '<div style="display:flex;align-items:center;justify-content:space-between;gap:10px;margin-bottom:10px"><div style="font-size:18px;font-weight:800">📜 Historique des pots — ' + esc(p.label) + '</div>'
+      + '<button onclick="closePotsHistory()" style="border:none;background:#eee;border-radius:10px;padding:8px 12px;font-size:14px;font-weight:700;cursor:pointer">✕ Fermer</button></div>';
+    h += '<div style="background:#F7F3EA;border-radius:12px;padding:12px 14px;margin-bottom:12px;font-size:13.5px;line-height:1.6">'
+      + '<b>Ce qui est affiché dans les pots</b> : 🏦 épargne ' + fmtEuros(w.epargne || 0) + ' € · 🎈 loisirs ' + fmtEuros(w.loisirs || 0) + ' €<br>'
+      + '<b>Ce que l\'historique explique</b> : 🏦 épargne ' + fmtEuros(cumE) + ' € · 🎈 loisirs ' + fmtEuros(cumL) + ' €<br>'
+      + '<span style="color:#555">Loisirs = répartitions ' + fmtEuros(totDistL) + ' € + bonus fiabilité ' + fmtEuros(totBonus) + ' € (' + nBonus + ') − remis ' + fmtEuros(totRecL) + ' €</span>';
+    if (Math.abs(ecartL) > 0.009 || Math.abs(ecartE) > 0.009) {
+      h += '<div style="margin-top:8px;background:#FDECEA;border:1px solid #F3B8B0;border-radius:10px;padding:8px 10px;color:#A6503A;font-weight:700">⚠️ Écart non expliqué : '
+        + (Math.abs(ecartL) > 0.009 ? '🎈 loisirs ' + (ecartL > 0 ? '+' : '') + fmtEuros(ecartL) + ' € ' : '') + (Math.abs(ecartE) > 0.009 ? '🏦 épargne ' + (ecartE > 0 ? '+' : '') + fmtEuros(ecartE) + ' €' : '')
+        + '<div style="font-weight:500;color:#555;margin-top:3px">Le montant affiché ne correspond pas à la somme des lignes ci-dessous (une écriture a pu être ajoutée ou perdue, par exemple lors de la synchronisation entre deux appareils).</div></div>';
+    } else {
+      h += '<div style="margin-top:8px;color:#3F5D46;font-weight:700">✅ Les montants affichés correspondent exactement à l\'historique.</div>';
+    }
+    if (nBonus) h += '<button onclick="potsHistUndoAllBonus(' + jsAttr(pid) + ')" style="margin-top:10px;border:1.5px solid #B96A46;background:#fff;color:#B96A46;border-radius:10px;padding:8px 12px;font-size:13px;font-weight:700;cursor:pointer">↺ Annuler les ' + nBonus + ' bonus fiabilité (−' + fmtEuros(totBonus) + ' € en loisirs)</button>';
+    h += '</div>';
+    if (!groups.length) h += '<p style="color:#777">Aucune écriture enregistrée pour le moment.</p>';
+    for (var gi = groups.length - 1; gi >= 0; gi--) {
+      var g = groups[gi];
+      h += '<div style="margin-bottom:12px"><div style="font-weight:800;font-size:13.5px;background:#E7EEE1;border-radius:8px;padding:6px 10px">' + (g.wk === 'sans-date' ? 'Sans date' : esc(potsHistWeekLabel(g.wk))) + '</div>';
+      for (var ri = g.rows.length - 1; ri >= 0; ri--) {
+        var e = g.rows[ri];
+        h += '<div style="display:flex;justify-content:space-between;gap:8px;align-items:flex-start;padding:7px 10px;border-bottom:1px solid #eee;font-size:13.5px;' + (e.kind === 'bonus' ? 'background:#FFF8E8;' : '') + '"><div>' + e.txt
+          + (e.kind === 'dist' ? '<div style="color:#777;font-size:12px">🏦 ' + fmtEuros(e.epargne) + ' € · 💳 ' + fmtEuros(e.dette) + ' € · 🎈 ' + fmtEuros(e.loisirs) + ' €</div>' : '')
+          + '<div style="color:#999;font-size:11.5px">' + (e.date ? formatDDMM(e.date) : '') + '</div></div>'
+          + (e.kind === 'bonus' ? '<button onclick="potsHistUndoBonus(' + jsAttr(e.id) + ',' + jsAttr(pid) + ')" style="border:none;background:#eee;border-radius:8px;padding:6px 9px;cursor:pointer" title="Annuler ce bonus">↺</button>' : '') + '</div>';
+      }
+      h += '<div style="text-align:right;font-size:12.5px;color:#555;padding:5px 10px">Après cette semaine : 🏦 ' + fmtEuros(g.cumE) + ' € · 🎈 ' + fmtEuros(g.cumL) + ' €</div></div>';
+    }
+    var ov = document.getElementById('potsHistOverlay');
+    if (!ov) { ov = document.createElement('div'); ov.id = 'potsHistOverlay'; ov.style.cssText = 'position:fixed;inset:0;z-index:99999;background:rgba(0,0,0,.45);overflow-y:auto;-webkit-overflow-scrolling:touch;padding:14px'; document.body.appendChild(ov); }
+    ov.innerHTML = '<div style="max-width:640px;margin:0 auto;background:#fff;border-radius:16px;padding:16px">' + h + '</div>';
+    ov.style.display = 'block';
+  }
+  function closePotsHistory() { var ov = document.getElementById('potsHistOverlay'); if (ov) ov.style.display = 'none'; }
+  function potsHistUndoBonus(bonusId, pid) { undoWeeklyBonus(bonusId); openPotsHistory(pid); }
+  function potsHistUndoAllBonus(pid) {
+    var list = getWeeklyBonusHistory().filter(function(b) { return b.personId === pid; });
+    if (!list.length) return;
+    var tot = round2(list.reduce(function(s, b) { return s + (b.amount || 0); }, 0));
+    if (!window.confirm('Annuler ' + list.length + ' bonus fiabilité et retirer ' + fmtEuros(tot) + ' € du pot loisirs ?')) return;
+    list.forEach(function(b) { undoWeeklyBonus(b.id); });
+    openPotsHistory(pid);
+  }
+
   // Les 'n' dernières semaines ISO 'YYYY-Www', de la plus récente à la plus ancienne (semaine en cours
   // incluse), pour le sélecteur du formulaire "+ bonus fiabilité" manuel. Il n'existe pas de prevWeekKey() :
   // on recalcule chaque semaine par arithmétique de dates (jeudi de la semaine en cours, -7j à chaque fois).
@@ -9365,6 +9457,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
         var olderSum = round2(personBonusesAll.slice(3).reduce(function(s, b){ return s + b.amount; }, 0));
         out += '<div class="malus-hist-info" style="padding:2px 4px;color:var(--muted);">+ ' + olderCount + ' bonus plus ancien' + (olderCount > 1 ? 's' : '') + ' (' + fmtEuros(olderSum) + ' € déjà inclus dans les loisirs)</div>';
       }
+      out += '<button class="detail-toggle-btn" onclick="openPotsHistory(' + jsAttr(p.id) + ')">📜 Historique complet des pots (depuis le départ)</button>';
       // ── Dettes de cet enfant : actives en premier, puis soldées (jamais supprimées) ──
       out += '<div class="debt-block">';
       if (personDebts.length) {
