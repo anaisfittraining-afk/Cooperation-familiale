@@ -9,7 +9,7 @@
 // iOS). Ce petit script détecte tout seul qu'une nouvelle version est arrivée (en comparant
 // MH_BUILD_VERSION à la dernière valeur vue sur cet appareil) et force un rechargement complet, sans
 // cache, une seule fois — même principe que côté epanouissement_index.html / epanouissement_hommes.html.
-window.MH_BUILD_VERSION = '2026-11-20-design';
+window.MH_BUILD_VERSION = '2026-11-20-design2';
 (function() {
   try {
     var KEY = 'mh_build_seen_v1';
@@ -3013,7 +3013,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     fbDB.ref(fbKeysPath()).on('child_removed', keysyncApplyRemoved);
     // 📥 Tâches envoyées depuis « Mon espace co-NAÎTRE » (bouton « Partager avec mon foyer ») : elles arrivent ici dans
     // une boîte de réception, deviennent des événements de l'agenda partagé, puis la boîte est vidée.
-    try { if (CLIENT_CODE && !MEMBER_MODE) fbDB.ref('clients/' + CLIENT_CODE + '/inbox_espace').on('child_added', espaceInboxApply); } catch (eIn) {}
+    try { if (!MEMBER_MODE) fbDB.ref('clients/' + (CLIENT_CODE || '_moi') + '/inbox_espace').on('child_added', espaceInboxApply); } catch (eIn) {}  // espace d'origine (sans ?client=) : boîte « _moi »
   }
   function espaceInboxApply(sn) {
     try {
