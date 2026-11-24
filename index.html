@@ -52,6 +52,11 @@ window.MH_BUILD_VERSION = '2026-11-22-cote2';
 <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
 <meta name="apple-mobile-web-app-title" content="co-NAÎTRE son foyer">
 <meta name="theme-color" content="#3F5D46">
+<link rel="manifest" href="manifest.json">
+<link rel="apple-touch-icon" sizes="180x180" href="apple-touch-icon.png">
+<link rel="icon" type="image/png" href="icon-192.png">
+<script>/* Icône d'écran d'accueil + lien personnel gardé quand l'appli est ajoutée à l'écran d'accueil */
+(function(){try{var q=(location.search||'').replace(/([?&])_v=\d+&?/,'$1').replace(/[?&]$/,'');if(/preview=/.test(q))return;var base=location.pathname.replace(/[^/]*$/,'');var m={name:"co-NAÎTRE son foyer",short_name:"Mon foyer",start_url:location.pathname+q,scope:base,display:'standalone',background_color:'#FFFCF3',theme_color:'#3F5D46',lang:'fr',icons:[{src:new URL('icon-192.png',location.href).href,sizes:'192x192',type:'image/png',purpose:'any'},{src:new URL('icon-512.png',location.href).href,sizes:'512x512',type:'image/png',purpose:'any'},{src:new URL('icon-512-maskable.png',location.href).href,sizes:'512x512',type:'image/png',purpose:'maskable'}]};var l=document.querySelector('link[rel=manifest]');if(l)l.href=URL.createObjectURL(new Blob([JSON.stringify(m)],{type:'application/manifest+json'}));}catch(e){}})();</script>
 <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate">
 <meta http-equiv="Pragma" content="no-cache">
 <meta http-equiv="Expires" content="0">
