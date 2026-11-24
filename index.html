@@ -513,6 +513,19 @@ window.MH_BUILD_VERSION = '2026-11-22-cote2';
   .kit-chips { display: flex; gap: 6px; flex-wrap: wrap; margin-top: 2px; }
   .kit-chips button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: #fff; color: var(--text, #26312A); cursor: pointer; width: auto; margin: 0; }
   .kit-chips button.on { background: #3F5D46; color: #fff; border-color: #3F5D46; }
+  .add-panel .kit-chips button { font: inherit; font-size: 12.5px; font-weight: 700; padding: 6px 12px; border-radius: 999px; border: 1.5px solid var(--border); background: #fff; color: var(--text, #26312A); cursor: pointer; width: auto; margin: 0; }
+  .add-panel .kit-chips button.on { background: #3F5D46; color: #fff; border-color: #3F5D46; }
+  .kit-types { margin-top: 8px; }
+  .kit-types button .n { opacity: .6; font-weight: 600; margin-left: 2px; }
+  .kit-types button.on .n { opacity: .85; }
+  .kit-fridge { margin-top: 10px; border: 1.5px dashed var(--border); border-radius: 14px; background: #fff; overflow: hidden; }
+  .add-panel .kit-fridge-t { font: inherit; font-size: 13.5px; font-weight: 800; width: 100%; margin: 0; padding: 11px 13px; border: none; background: none; color: var(--text, #26312A); cursor: pointer; display: flex; justify-content: space-between; align-items: center; gap: 8px; text-align: left; }
+  .kit-fridge-t em { font-style: normal; font-weight: 700; color: #3F5D46; }
+  .kit-frow { display: flex; gap: 6px; flex-wrap: wrap; padding: 0 13px 8px; }
+  .kit-fi { font: inherit; font-size: 14px; flex: 1 1 96px; min-width: 0; width: auto; margin: 0; padding: 9px 11px; border: 1.5px solid var(--border); border-radius: 10px; background: #fff; color: var(--text, #26312A); }
+  .kit-fh { font-size: 12px; color: var(--muted); padding: 0 13px 8px; line-height: 1.4; }
+  .add-panel .kit-fclr { font: inherit; font-size: 12px; font-weight: 700; width: auto; margin: 0; padding: 0; border: none; background: none; color: var(--muted); cursor: pointer; text-decoration: underline; }
+  .kit-rc .tx em.kit-fm { font-style: normal; font-size: 11px; font-weight: 700; color: #3F5D46; line-height: 1.3; }
   .kit-modal { position: fixed; inset: 0; background: rgba(38,49,42,.55); z-index: 9999; display: flex; align-items: flex-end; justify-content: center; }
   .kit-sheet { position: relative; background: var(--bg, #F7F1E6); width: 100%; max-width: 640px; max-height: 92vh; overflow-y: auto; border-radius: 22px 22px 0 0; padding: 0 18px 28px; -webkit-overflow-scrolling: touch; }
   .kit-sheet h2 { font-size: 22px; margin: 16px 0 4px; line-height: 1.2; }
@@ -7857,34 +7870,136 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
   }
 
   // ── 📚 Recettes : le livre, avec photos, ingrédients et étapes ──
+  // ── 🔎 Trouver une recette : par aliment, par type de repas, ou avec ce qu'on a dans le frigo ──
+  var KIT_TYPES = [['pdj', '🥣', 'Petit-déj'], ['sale', '🍽️', 'Repas salé'], ['collation', '🍎', 'Collation'], ['dessert', '🍰', 'Dessert'], ['boisson', '🥤', 'Boisson / jus'], ['sauce', '🫙', 'Sauce & accomp.']];
+  var KIT_RECIPE_TYPE = '', KIT_FRIDGE = ['', '', ''], KIT_FRIDGE_OPEN = false, KIT_TYPE_CACHE = {};
+  function kitNorm(x) { return mealNorm(String(x == null ? '' : x).replace(/[œŒ]/g, 'oe').replace(/[æÆ]/g, 'ae')); }
+  var KIT_KW = (function() {
+    function n(l) { return l.map(kitNorm); }
+    return {
+      boisson: n(['jus', 'smoothie', 'boisson', 'milk shake', 'milkshake', 'infusion', 'tisane', 'latte', 'chocolat chaud', 'citronnade', 'limonade', 'eau detox', 'cocktail', 'lait d amande', 'lait vegetal']),
+      sauce: n(['sauce', 'vinaigrette', 'mayonnaise', 'dressing', 'pesto', 'tapenade', 'guacamole', 'houmous', 'hummus', 'tartinade', 'marinade', 'coulis', 'chutney', 'tzatziki', 'assaisonnement', 'labneh', 'dip', 'pate a tartiner']),
+      snackSauce: n(['houmous', 'hummus', 'guacamole', 'tapenade', 'tzatziki', 'tartinade', 'labneh', 'dip', 'pate a tartiner']),
+      pdj: n(['petit dej', 'porridge', 'granola', 'muesli', 'overnight', 'pancake', 'pain perdu', 'gaufre', 'crepe', 'oatmeal', 'gruau', 'brunch', 'skyr', 'tartine', 'toast', 'omelette', 'oeuf brouille', 'smoothie bowl', 'bowl cake', 'bowlcake', 'brioche', 'bircher', 'pudding de chia']),
+      pdjSweet: n(['pancake', 'pain perdu', 'gaufre', 'crepe', 'bowlcake', 'brioche']),
+      dessert: n(['dessert', 'gateau', 'flan', 'mousse', 'panacotta', 'brownie', 'cookie', 'fondant', 'panna cotta', 'tiramisu', 'crumble', 'clafoutis', 'pudding', 'riz au lait', 'ile flottante', 'beignet', 'madeleine', 'macaron', 'cheesecake', 'entremet', 'eclair', 'charlotte', 'banoffee', 'truffe', 'glace', 'sorbet', 'creme dessert', 'creme brulee', 'creme caramel', 'creme vanille', 'creme au chocolat', 'creme glacee', 'biscuit', 'sable', 'compote', 'cupcake', 'banana bread', 'chocolat', 'verrine sucree']),
+      collation: n(['collation', 'snack', 'skyr', 'barre', 'energy', 'energ', 'bouchee', 'bite', 'craquant', 'cracker', 'chips', 'popcorn', 'cookie', 'biscuit', 'truffe', 'muffin', 'compote', 'banana bread', 'brownie', 'madeleine', 'sable']),
+      saltyName: n(['sale', 'salee', 'jambon', 'olive', 'lardon', 'chevre', 'saumon', 'poulet', 'thon', 'legume', 'feta', 'dinde', 'poireau', 'courgette', 'bacon', 'tomate', 'epinard', 'champignon', 'brocoli', 'aubergine', 'chorizo', 'butternut', 'potiron', 'saucisse', 'viande', 'boeuf', 'crevette', 'curry', 'pesto', 'roquefort', 'mozzarella']),
+      fruit: n(['pomme', 'poire', 'citron', 'fraise', 'framboise', 'myrtille', 'abricot', 'banane', 'chocolat', 'rhubarbe', 'amande', 'noix de coco', 'caramel', 'sucre', 'praline', 'mirabelle', 'cerise', 'peche', 'prune', 'figue', 'orange', 'cacahuete', 'vanille', 'coco', 'choco', 'ananas', 'melon', 'mangue', 'kiwi', 'fruit', 'meringue']),
+      sweet: n(['sucre', 'miel', 'chocolat', 'cacao', 'sirop', 'vanille', 'levure chimique', 'confiture', 'pepite', 'caramel', 'compote', 'pate a tartiner']),
+      sav: n(['viande', 'poulet', 'boeuf', 'veau', 'porc', 'dinde', 'canard', 'agneau', 'poisson', 'saumon', 'thon', 'crevette', 'cabillaud', 'jambon', 'lardon', 'saucisse', 'oignon', 'ail', 'echalote', 'poireau', 'courgette', 'carotte', 'tomate', 'poivron', 'aubergine', 'champignon', 'pomme de terre', 'patate', 'haricot', 'chou', 'epinard', 'brocoli', 'riz', 'nouille', 'semoule', 'lentille', 'pois', 'moutarde', 'bouillon', 'curry', 'persil', 'basilic'])
+    };
+  })();
+  function kitKw(s, list) { var h = ' ' + s; return list.some(function(w) { return h.indexOf(' ' + w) >= 0; }); }
+  function kitKwW(s, list) { var h = ' ' + s + ' '; return list.some(function(w) { return h.indexOf(' ' + w + ' ') >= 0; }); }
+  function kitStart(s, list) { return list.some(function(w) { return s === w || s.indexOf(w + ' ') === 0; }); }
+  function kitCount(ings, list) { var c = 0; ings.forEach(function(s) { if (kitKw(s, list)) c++; }); return c; }
+  // Devine le(s) type(s) de repas d'une recette (sauf si elle porte déjà un champ « type »)
+  function kitGuessTypes(r) {
+    var name = kitNorm(r.name).replace(/^((thermomix|cookeo|cookeo|hellofresh|express|recette) )+/, ''), ings = (r.ings || []).map(function(g) { return kitNorm(g && g.n); });
+    var sweet = kitCount(ings, KIT_KW.sweet), sav = kitCount(ings, KIT_KW.sav), t = [];
+    function add(x) { if (t.indexOf(x) < 0) t.push(x); }
+    var salty = kitKw(name, KIT_KW.saltyName);
+    if (kitStart(name, KIT_KW.boisson) || (kitKw(name, ['smoothie']) && !kitKw(name, ['bowl']))) { add('boisson'); if (kitKw(name, ['smoothie'])) add('collation'); return t; }
+    if (kitStart(name, KIT_KW.sauce)) { add('sauce'); if (kitKw(name, KIT_KW.snackSauce)) add('collation'); return t; }
+    if (kitKw(name, KIT_KW.pdj)) { add('pdj'); if (salty || kitKw(name, ['omelette', 'toast', 'tartine', 'oeuf brouille'])) add('sale'); else if (kitKw(name, KIT_KW.pdjSweet)) add('dessert'); }
+    if (kitKw(name, ['muffin', 'cake'])) { if (salty || sav >= 2) { add('sale'); add('collation'); } else { add('collation'); add('dessert'); if (kitKw(name, ['muffin'])) add('pdj'); } }
+    if (kitKw(name, ['quiche'])) add('sale');
+    if (kitKw(name, ['tarte', 'tartelette', 'tourte'])) { if (!salty && (kitKwW(name.replace(/pomme de terre/g, ' '), KIT_KW.fruit) || (sweet >= 2 && sav === 0))) add('dessert'); else add('sale'); }
+    if (kitKw(name, KIT_KW.dessert)) { if (salty) add('sale'); else add('dessert'); }
+    if (kitKw(name, KIT_KW.collation)) add('collation');
+    if (t.indexOf('dessert') >= 0 && sav >= 3 && sweet <= 1) { t = t.filter(function(x) { return x !== 'dessert' && x !== 'collation'; }); add('sale'); }
+    if (!t.length) add((sweet >= 2 && sav === 0) || (sav === 0 && !salty && kitKwW(name, KIT_KW.fruit) && (!kitKw(name, ['salade']) || kitKw(name, ['salade de fruit']))) ? 'dessert' : 'sale');
+    return t;
+  }
+  function kitMealTypes(r) {
+    if (!r) return ['sale'];
+    var key = r.id + '|' + r.name + '|' + (r.ings || []).length; if (KIT_TYPE_CACHE[key]) return KIT_TYPE_CACHE[key];
+    var out = [], t = r.type || r.types;
+    if (t) out = [].concat(t).filter(function(x) { return KIT_TYPES.some(function(k) { return k[0] === x; }); });
+    if (!out.length) out = kitGuessTypes(r);
+    KIT_TYPE_CACHE[key] = out; return out;
+  }
+  // « Dans mon frigo » : jusqu'à 3 aliments → recettes qui les utilisent
+  var KIT_SYN = { patate: 'pomme de terre', yogourt: 'yaourt' };
+  function kitFridgeTerms() {
+    var out = [];
+    KIT_FRIDGE.forEach(function(x) { var raw = String(x || '').trim(), n = kitNorm(raw); if (KIT_SYN[n]) n = KIT_SYN[n]; if (n.length >= 2) out.push({ raw: raw, n: n }); });
+    return out.slice(0, 3);
+  }
+  function kitFridgeMatch(r, terms) {
+    var ings = (r.ings || []).map(function(g) { return ' ' + kitNorm(g && g.n); }), nm = ' ' + kitNorm(r.name), hit = [], miss = [];
+    terms.forEach(function(t) {
+      var k = ' ' + t.n;
+      if (ings.some(function(s) { return s.indexOf(k) >= 0; }) || nm.indexOf(k) >= 0) hit.push(t.raw); else miss.push(t.raw);
+    });
+    return { hit: hit, miss: miss };
+  }
   function kitRecipeSearch(v) { KIT_RECIPE_Q = v; kitRecipeListRefresh(); }
   function kitRecipeGroup(g) { KIT_RECIPE_GROUP = g; renderRecipes(); }
-  function kitRecipeCardHtml(r) {
+  function kitTypeSet(t) { KIT_RECIPE_TYPE = (KIT_RECIPE_TYPE === t) ? '' : t; renderRecipes(); }
+  function kitFridgeToggle() { KIT_FRIDGE_OPEN = !KIT_FRIDGE_OPEN; renderRecipes(); if (KIT_FRIDGE_OPEN) setTimeout(function() { var i = document.querySelector('.kit-fi'); if (i) i.focus(); }, 60); }
+  function kitFridgeSet(i, v) {
+    KIT_FRIDGE[i] = v; kitRecipeListRefresh();
+    var l = document.getElementById('kit-fridge-lbl'), t = kitFridgeTerms(); if (l) l.textContent = t.length ? ' — ' + t.map(function(x) { return x.raw; }).join(', ') : ''; var cr = document.getElementById('kit-fclr-row'); if (cr) cr.style.display = t.length ? '' : 'none';
+  }
+  function kitFridgeClear() { KIT_FRIDGE = ['', '', '']; renderRecipes(); }
+  function kitRecipeCardHtml(r, extra) {
     var thumb = r.photo ? '<img data-ph="' + esc(r.id) + '" alt="">' : '<span class="em">' + esc(r.emoji || '🍽️') + '</span>';
     var meta = [r.time ? '⏱ ' + r.time : '', r.portions ? '👥 ' + r.portions : '', (r.ings || []).length + ' ingr.'].filter(Boolean).join(' · ');
-    return '<div class="kit-rc" onclick="kitOpenRecipe(' + jsAttr(r.id) + ')"><div class="th">' + thumb + '</div><div class="tx"><b>' + esc(r.name) + '</b><span>' + esc(meta) + '</span></div></div>';
+    return '<div class="kit-rc" onclick="kitOpenRecipe(' + jsAttr(r.id) + ')"><div class="th">' + thumb + '</div><div class="tx"><b>' + esc(r.name) + '</b><span>' + esc(meta) + '</span>' + (typeof extra === 'string' && extra ? '<em class="kit-fm">' + extra + '</em>' : '') + '</div></div>';
   }
   function kitRecipeListHtml() {
-    var q = mealNorm(KIT_RECIPE_Q), all = mealAllRecipes().filter(function(r) {
+    var toks = kitNorm(KIT_RECIPE_Q).split(' ').filter(Boolean), terms = kitFridgeTerms(), n = terms.length;
+    var all = mealAllRecipes().filter(function(r) {
       if (KIT_RECIPE_GROUP && (r.cat || 'user') !== KIT_RECIPE_GROUP) return false;
-      return !q || mealNorm(r.name).indexOf(q) >= 0 || (r.ings || []).some(function(g) { return mealNorm(g.n).indexOf(q) >= 0; });
+      if (KIT_RECIPE_TYPE && kitMealTypes(r).indexOf(KIT_RECIPE_TYPE) < 0) return false;
+      if (!toks.length) return true;
+      var hay = kitNorm(r.name) + ' | ' + (r.ings || []).map(function(g) { return kitNorm(g && g.n); }).join(' | ');
+      return toks.every(function(t) { return hay.indexOf(t) >= 0; });
     });
-    if (!all.length) return '<div class="empty"><div class="icon">📚</div>Aucune recette trouvée.</div>';
-    var out = '';
+    var filtered = !!(toks.length || KIT_RECIPE_TYPE || KIT_RECIPE_GROUP);
+    if (n) {
+      var scored = [];
+      all.forEach(function(r) { var m = kitFridgeMatch(r, terms); if (m.hit.length) scored.push({ r: r, m: m }); });
+      if (!scored.length) return '<div class="empty"><div class="icon">🧊</div>Aucune recette avec ' + esc(terms.map(function(x) { return x.raw; }).join(', ')) + '.<br>Essaie un autre aliment (ex : œuf, courgette, poulet)' + (filtered ? ' ou enlève un filtre.' : '.') + '</div>';
+      var out = '<p class="points-note" style="margin:8px 2px">🧊 ' + scored.length + ' idée' + (scored.length > 1 ? 's' : '') + ' avec ce que tu as · ✅ tu l\'as · ✖ il te manque</p>';
+      for (var k = n; k >= 1; k--) {
+        var l = scored.filter(function(s) { return s.m.hit.length === k; }).sort(function(a, b) { return (a.r.ings || []).length - (b.r.ings || []).length || String(a.r.name).localeCompare(String(b.r.name), 'fr'); });
+        if (!l.length) continue;
+        var title = (k === n) ? (n === 1 ? '🧊 Avec ' + esc(terms[0].raw) : '🧊 Avec tes ' + n + ' ingrédients') : ('Avec ' + k + ' de tes ' + n + ' ingrédients');
+        out += '<div class="meal-sec">' + title + ' (' + l.length + ')</div><div class="kit-rgrid">' + l.map(function(s) { return kitRecipeCardHtml(s.r, '✅ ' + esc(s.m.hit.join(', ')) + (s.m.miss.length ? ' · ✖ ' + esc(s.m.miss.join(', ')) : '')); }).join('') + '</div>';
+      }
+      return out;
+    }
+    if (!all.length) return '<div class="empty"><div class="icon">📚</div>Aucune recette trouvée' + (filtered ? '.<br>Essaie un autre mot ou change de type de repas.' : '.') + '</div>';
+    var out2 = filtered ? '<p class="points-note" style="margin:8px 2px">' + all.length + ' recette' + (all.length > 1 ? 's' : '') + ' trouvée' + (all.length > 1 ? 's' : '') + '</p>' : '';
     KIT_GROUPS.forEach(function(g) {
       var l = all.filter(function(r) { return (r.cat || 'user') === g[0]; }).sort(function(a, b) { return String(a.name).localeCompare(String(b.name), 'fr'); });
       if (!l.length) return;
-      out += '<div class="meal-sec">' + esc(g[1]) + ' (' + l.length + ')</div><div class="kit-rgrid">' + l.map(kitRecipeCardHtml).join('') + '</div>';
+      out2 += '<div class="meal-sec">' + esc(g[1]) + ' (' + l.length + ')</div><div class="kit-rgrid">' + l.map(function(r) { return kitRecipeCardHtml(r); }).join('') + '</div>';
     });
-    return out;
+    return out2;
   }
   function kitRecipeListRefresh() { var l = document.getElementById('kit-rlist'); if (l) { l.innerHTML = kitRecipeListHtml(); kitFillPhotos(l); } }
   function renderRecipes() {
     if (!kitMount()) return;
     var el = document.getElementById('courses-pane-recipes'); if (!el) return;
-    var cats = [['', 'Toutes']].concat(KIT_GROUPS.filter(function(g) { return mealAllRecipes().some(function(r) { return (r.cat || 'user') === g[0]; }); }).map(function(g) { return [g[0], g[1]]; }));
-    var out = '<div class="add-panel" style="margin-top:0"><div class="row1"><input type="text" id="kit-rq" placeholder="🔎 Chercher une recette ou un ingrédient…" value="' + esc(KIT_RECIPE_Q) + '" oninput="kitRecipeSearch(this.value)"></div>';
-    if (cats.length > 2) out += '<div class="kit-chips">' + cats.map(function(c) { return '<button class="' + (KIT_RECIPE_GROUP === c[0] ? 'on' : '') + '" onclick="kitRecipeGroup(' + jsAttr(c[0]) + ')">' + esc(c[1]) + '</button>'; }).join('') + '</div>';
+    var every = mealAllRecipes();
+    var cats = [['', 'Toutes']].concat(KIT_GROUPS.filter(function(g) { return every.some(function(r) { return (r.cat || 'user') === g[0]; }); }).map(function(g) { return [g[0], g[1]]; }));
+    var out = '<div class="add-panel" style="margin-top:0"><div class="row1"><input type="text" id="kit-rq" placeholder="🔎 Chercher une recette ou un aliment (ex : poulet, banane)…" value="' + esc(KIT_RECIPE_Q) + '" oninput="kitRecipeSearch(this.value)"></div>';
+    var tc = {}; every.forEach(function(r) { kitMealTypes(r).forEach(function(t) { tc[t] = (tc[t] || 0) + 1; }); });
+    out += '<div class="kit-chips kit-types"><button class="' + (!KIT_RECIPE_TYPE ? 'on' : '') + '" onclick="kitTypeSet(\'\')">Tous les repas</button>' + KIT_TYPES.filter(function(t) { return tc[t[0]]; }).map(function(t) { return '<button class="' + (KIT_RECIPE_TYPE === t[0] ? 'on' : '') + '" onclick="kitTypeSet(' + jsAttr(t[0]) + ')">' + t[1] + ' ' + esc(t[2]) + ' <span class="n">' + tc[t[0]] + '</span></button>'; }).join('') + '</div>';
+    if (cats.length > 2) out += '<div class="kit-chips kit-types">' + cats.map(function(c) { return '<button class="' + (KIT_RECIPE_GROUP === c[0] ? 'on' : '') + '" onclick="kitRecipeGroup(' + jsAttr(c[0]) + ')">' + esc(c[1]) + '</button>'; }).join('') + '</div>';
+    var terms = kitFridgeTerms();
+    out += '<div class="kit-fridge"><button class="kit-fridge-t" onclick="kitFridgeToggle()"><span>🧊 Dans mon frigo : des idées de recettes<em id="kit-fridge-lbl">' + (terms.length ? ' — ' + esc(terms.map(function(x) { return x.raw; }).join(', ')) : '') + '</em></span><span>' + (KIT_FRIDGE_OPEN ? '▴' : '▾') + '</span></button>';
+    if (KIT_FRIDGE_OPEN) {
+      var ph = ['Ex : poulet', 'Ex : courgette', 'Ex : riz'];
+      out += '<div class="kit-fh">Écris jusqu\'à 3 aliments que tu as sous la main : je te montre les recettes qui les utilisent.</div><div class="kit-frow">' +
+        [0, 1, 2].map(function(i) { return '<input type="text" class="kit-fi" maxlength="40" placeholder="' + ph[i] + '" value="' + esc(KIT_FRIDGE[i]) + '" oninput="kitFridgeSet(' + i + ',this.value)">'; }).join('') +
+        '</div><div class="kit-fh" id="kit-fclr-row"' + (terms.length ? '' : ' style="display:none"') + '><button class="kit-fclr" onclick="kitFridgeClear()">✕ Tout effacer</button></div>';
+    }
+    out += '</div>';
     if (KIT_CN_STATE === 'loading') out += '<p class="points-note" style="margin:8px 2px">⏳ Chargement des recettes co-NAÎTRE…</p>';
     if (KIT_CN_STATE === 'err') out += '<p class="points-note" style="margin:8px 2px">⚠️ Les recettes co-NAÎTRE n\'ont pas pu être chargées (fichier recettes_data.js introuvable ou pas de connexion).</p>';
     out += '</div><div id="kit-rlist">' + kitRecipeListHtml() + '</div>';
