@@ -1866,7 +1866,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
     '<p>' + (force ? 'Entre le code de ton enfant pour ouvrir son espace sur ce téléphone.' : 'Entre ton code d\'accès pour retrouver ton espace famille.') + '</p>' +
     '<input id="mhGateCode" type="text" inputmode="text" autocomplete="off" autocapitalize="characters" spellcheck="false" maxlength="12" placeholder="XXXX-XXXX">' +
     '<div class="ge" id="mhGateErr"></div><button id="mhGateBtn" type="button">Entrer</button>' +
-    (force ? '<div class="gf">Le code de chaque enfant se crée dans « Accès : enfants et 2ᵉ adulte ».<br><a href="' + location.pathname + '" style="color:#3F5D46;font-weight:700">← Retour à mon espace</a></div></div>' : '<div class="gf">Ton code t\'a été remis par ta coach.<br>Tu n\'en as pas encore ? Demande-le-lui directement.</div></div>');
+    (force ? '<div class="gf">Le code de chaque enfant se crée dans « Accès : enfants et 2ᵉ adulte ».<br><a href="' + location.pathname + '" style="color:#3F5D46;font-weight:700">← Retour à mon espace</a></div></div>' : '<div class="gf">Ton code t\'a été remis par ta coach.<br>Tu n\'en as pas encore ? Demande-le-lui directement.</div><div class="gf" style="margin-top:10px"><a href="#" id="mhOwnerLink" style="color:#3F5D46;font-weight:700;text-decoration:underline">Je suis Anaïs</a></div></div>');
   document.body.appendChild(d);
   var inp = document.getElementById('mhGateCode'), btn = document.getElementById('mhGateBtn'), err = document.getElementById('mhGateErr');
   function showErr(m) { err.textContent = m || ''; btn.disabled = false; btn.textContent = 'Entrer'; }
@@ -1908,6 +1908,57 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       fin(function() { if (e.member) sv('mh_member_dev', '1'); sv('mh_gate_origin', 'local'); sv('mh_gate_v1', JSON.stringify({ h: h, client: e.client || '', member: e.member || '', adult: e.adult ? 1 : 0, name: e.name || '', email: e.email || '', t: Date.now() })); location.replace(location.pathname); });
     }).catch(function() { fin(function() { showErr('Connexion impossible. Vérifie ta connexion internet et réessaie.'); }); });
   }
+  // ── « Je suis Anaïs » : reconnaissance du propriétaire par mot de passe (vérifié par empreinte PBKDF2, jamais stocké en clair).
+  // Utile pour l'icône de l'écran d'accueil iPhone, dont la mémoire est séparée de Safari. Une fois reconnue, l'appareil est marqué propriétaire.
+  (function() {
+    var MH_OWN_SALT = '96ad60b04bbba84ba2f3dca5fab6a336', MH_OWN_HASH = 'bf6d65eb8ab6ba897ca44b34e07b05158c1e50ff06585f7ba3ea49cebc8c47d2', MH_OWN_ITER = 600000;
+    function hex2buf(x) { var a = new Uint8Array(x.length / 2); for (var i = 0; i < a.length; i++) a[i] = parseInt(x.substr(i * 2, 2), 16); return a; }
+    function buf2hex(b) { return Array.prototype.map.call(new Uint8Array(b), function(v) { return ('0' + v.toString(16)).slice(-2); }).join(''); }
+    function getRemote() {
+      return new Promise(function(res) {
+        var db = null;
+        try {
+          var app; try { app = firebase.app('mhgate'); } catch (e0) { app = firebase.initializeApp({ apiKey: 'AIzaSyC9BmsyRf2MY7qxRO7bL1wRhkJuig0IcLQ', authDomain: 'cooperation-familiale.firebaseapp.com', databaseURL: 'https://cooperation-familiale-default-rtdb.europe-west1.firebasedatabase.app', projectId: 'cooperation-familiale' }, 'mhgate'); }
+          db = app.database();
+        } catch (e) { res(null); return; }
+        var done = false, to = setTimeout(function() { if (!done) { done = true; res(null); } }, 6000);
+        db.ref('epanouissement_global/foyer_owner').once('value').then(function(sn) { if (done) return; done = true; clearTimeout(to); res(sn.val()); }).catch(function() { if (done) return; done = true; clearTimeout(to); res(null); });
+      });
+    }
+    var link = document.getElementById('mhOwnerLink'); if (!link) return;
+    link.addEventListener('click', function(ev) {
+      ev.preventDefault();
+      inp.value = ''; inp.type = 'password'; inp.removeAttribute('maxlength'); inp.style.textTransform = 'none'; inp.style.letterSpacing = '2px';
+      inp.placeholder = 'Mot de passe'; err.textContent = '';
+      btn.textContent = 'Entrer'; link.parentNode.style.display = 'none';
+      var P = d.querySelector('.gc p'); if (P) P.textContent = 'Entre ton mot de passe personnel pour retrouver ton espace.';
+      var gf = d.querySelector('.gc .gf'); if (gf) gf.style.display = 'none';
+      var nb = btn.cloneNode(true); btn.parentNode.replaceChild(nb, btn); btn = nb;
+      var ni = inp.cloneNode(true); inp.parentNode.replaceChild(ni, inp); inp = ni;
+      function go() {
+        var pw = inp.value || '';
+        var now = Date.now(); fails = fails.filter(function(t) { return now - t < 600000; });
+        if (fails.length >= 6) { showErr('Trop d\'essais. Patiente quelques minutes avant de réessayer.'); return; }
+        if (!pw) { showErr('Écris ton mot de passe.'); return; }
+        if (!(window.crypto && crypto.subtle)) { showErr('Ce navigateur ne permet pas cette vérification. Ouvre le lien dans Safari.'); return; }
+        btn.disabled = true; btn.textContent = 'Vérification…'; err.textContent = '';
+        // Le mot de passe peut être changé depuis le tableau de bord (stocké sous forme d'empreinte dans Firebase) ;
+        // à défaut (hors ligne / jamais changé), l'empreinte intégrée à ce fichier sert de secours.
+        getRemote().then(function(rm) {
+          var salt = (rm && rm.hash && rm.salt) ? rm.salt : MH_OWN_SALT, iter = (rm && rm.hash && rm.iter) ? rm.iter : MH_OWN_ITER, want = (rm && rm.hash) ? rm.hash : MH_OWN_HASH;
+          return crypto.subtle.importKey('raw', new TextEncoder().encode(pw), 'PBKDF2', false, ['deriveBits']).then(function(k) {
+            return crypto.subtle.deriveBits({ name: 'PBKDF2', salt: hex2buf(salt), iterations: iter, hash: 'SHA-256' }, k, 256);
+          }).then(function(bits) { return buf2hex(bits) === want; });
+        }).then(function(ok) {
+          if (ok) { sv('mh_owner_v1', '1'); location.replace(location.pathname + '?moi'); }
+          else { fails.push(Date.now()); sv('mh_gate_fail', JSON.stringify(fails)); showErr('Mot de passe incorrect.'); }
+        }).catch(function() { showErr('Vérification impossible. Réessaie.'); });
+      }
+      btn.addEventListener('click', go);
+      inp.addEventListener('keydown', function(e) { if (e.key === 'Enter') go(); });
+      try { inp.focus(); } catch (e) {}
+    });
+  })();
   setTimeout(function() { try { inp.focus(); } catch (e) {} }, 100);
 })();
 </script>
@@ -3332,7 +3383,7 @@ function mhAccHash(c) { return mhSha256('conaitre-v1|' + mhAccNorm(c)); } // mê
       var regUpd = { lastSeen: new Date().toISOString() };
       if (displayName) regUpd.name = displayName;           // ne jamais effacer le nom saisi à la création du code
       if (cfg && cfg.email) regUpd.email = cfg.email;
-      fbDB.ref(fbRegistryPath() + '/' + CLIENT_CODE).update(regUpd).catch(function() {});
+      if (!/^essai_/.test(CLIENT_CODE)) fbDB.ref(fbRegistryPath() + '/' + CLIENT_CODE).update(regUpd).catch(function() {});   // (les essais gratuits ne s'inscrivent pas dans la liste des clientes)
       // Accès par code : si la coach a coupé ou remplacé ce code depuis son tableau de bord, l'appareil est déconnecté.
       try {
         var tr = JSON.parse(localStorage.getItem('mh_gate_v1') || 'null');
@@ -11931,5 +11982,59 @@ function xvClose() {
 document.addEventListener('keydown', function(e) { if (e.key === 'Escape') xvClose(); });
 </script>
 
+<script>
+/* 🎁 Essai gratuit (calendrier de l'Avent) : si le lien contient un identifiant d'essai (essai_…), on vérifie sur
+   Firebase que l'essai est encore ouvert. Fin de l'essai (ou essai coupé) → écran de fin par-dessus l'appli.
+   Sans identifiant d'essai dans le lien, ce bloc ne fait strictement rien : les clientes ne sont pas concernées. */
+(function () {
+  var m = /[?&](?:client|code)=(essai_[a-z0-9]+)/i.exec(location.search); if (!m) return;
+  var ID = m[1].toLowerCase(), LSK = 'essai_fin_' + ID, NOM = 'co-NAÎTRE son foyer', RETOUR = 'https://anaisfittraining-afk.github.io/co-naitre-en-mouvement/avent.html';
+  var fin = 0, ov = null, pill = null, db = null, tick = null;
+  try { fin = parseInt(localStorage.getItem(LSK) || '0', 10) || 0; } catch (e) {}
+  function overlay(titre, txt, withBtn) {
+    if (!ov) {
+      ov = document.createElement('div'); ov.id = 'essaiOverlay';
+      ov.style.cssText = 'position:fixed;inset:0;z-index:2147483000;background:#F7F1E6;display:flex;align-items:center;justify-content:center;padding:24px;font-family:Karla,-apple-system,BlinkMacSystemFont,"Segoe UI",Roboto,sans-serif;color:#2C3A30;text-align:center';
+      document.body.appendChild(ov);
+    }
+    ov.innerHTML = '<div style="max-width:380px"><div style="font-size:44px;margin-bottom:8px">🎁</div><h1 style="font-family:Fraunces,Georgia,serif;font-size:26px;margin:0 0 10px;color:#3F5D46">' + titre + '</h1><p style="margin:0 0 20px;color:#66735F;font-size:16px;line-height:1.5">' + txt + '</p>' +
+      (withBtn ? '<a href="' + RETOUR + '" style="display:block;padding:14px;border-radius:14px;background:#3F5D46;color:#fff;font-weight:700;text-decoration:none;font-size:16px">Retour à mon calendrier</a>' : '') + '</div>';
+  }
+  function hideOverlay() { if (ov) { ov.remove(); ov = null; } }
+  function left(ms) { var h = Math.floor(ms / 3600000), d = Math.floor(h / 24); if (d >= 2) return d + ' jours'; if (h >= 1) return h + ' h ' + ('0' + Math.floor((ms % 3600000) / 60000)).slice(-2); return Math.max(1, Math.ceil(ms / 60000)) + ' min'; }
+  function showPill() {
+    if (!pill) {
+      pill = document.createElement('div');
+      pill.style.cssText = 'position:fixed;top:6px;right:6px;z-index:2147482000;background:rgba(63,93,70,.92);color:#fff;font:700 11.5px Karla,-apple-system,sans-serif;padding:5px 10px;border-radius:999px;pointer-events:none;box-shadow:0 2px 6px rgba(0,0,0,.18)';
+      document.body.appendChild(pill);
+    }
+    pill.textContent = '🎁 Essai · il reste ' + left(fin - Date.now());
+  }
+  function judge() {
+    if (!fin) return;
+    if (Date.now() >= fin) { if (pill) { pill.remove(); pill = null; } overlay('Ton essai est terminé', 'Merci d’avoir testé ' + NOM + ' ! Retrouve dans ton calendrier comment continuer avec Anaïs.', true); }
+    else { hideOverlay(); showPill(); }
+  }
+  function verify() {
+    if (!db) return;
+    db.ref('epanouissement_global/avent2026/essais/' + ID).once('value').then(function (sn) {
+      var v = sn.val();
+      if (!v || !v.fin) { fin = 1; try { localStorage.removeItem(LSK); } catch (e) {} overlay('Ce lien d’essai n’est pas valable', 'Retourne sur ton calendrier de l’Avent pour activer ton essai.', true); return; }
+      fin = +v.fin; try { localStorage.setItem(LSK, String(fin)); } catch (e) {}
+      judge();
+    }).catch(function () { if (!fin) overlay('Connexion nécessaire', 'Vérifie ta connexion internet pour ouvrir ton essai, puis réessaie.', false); });
+  }
+  function start() {
+    if (typeof firebase === 'undefined' || !firebase.initializeApp) { if (!fin) overlay('Connexion nécessaire', 'Vérifie ta connexion internet pour ouvrir ton essai, puis réessaie.', false); return; }
+    try { var app; try { app = firebase.app('essaiGuard'); } catch (e) { app = firebase.initializeApp({ apiKey: 'AIzaSyC9BmsyRf2MY7qxRO7bL1wRhkJuig0IcLQ', authDomain: 'cooperation-familiale.firebaseapp.com', databaseURL: 'https://cooperation-familiale-default-rtdb.europe-west1.firebasedatabase.app', projectId: 'cooperation-familiale' }, 'essaiGuard'); } db = app.database(); } catch (e) { db = null; }
+    if (!fin) overlay('Un instant…', 'Je vérifie ton essai.', false); else judge();
+    verify();
+    tick = setInterval(judge, 30000);
+    setInterval(verify, 300000);
+    document.addEventListener('visibilitychange', function () { if (document.visibilityState === 'visible') { judge(); verify(); } });
+  }
+  if (document.readyState === 'complete') start(); else window.addEventListener('load', start);
+})();
+</script>
 </body>
 </html>
